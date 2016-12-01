@@ -1211,19 +1211,23 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
                 ARSTREAM2_RTP_RtpStats_t rtpStats;
 
                 memset(&rtpStats, 0, sizeof(ARSTREAM2_RTP_RtpStats_t));
-                rtpStats.timestamp = sender->rtcpSenderContext.lastRrReceptionTimestamp;
-                rtpStats.roundTripDelay = sender->rtcpSenderContext.roundTripDelay;
-                rtpStats.interarrivalJitter = sender->rtcpSenderContext.interarrivalJitter;
-                rtpStats.receiverLostCount = sender->rtcpSenderContext.receiverLostCount;
-                rtpStats.receiverFractionLost = sender->rtcpSenderContext.receiverFractionLost;
-                rtpStats.receiverExtHighestSeqNum = sender->rtcpSenderContext.receiverExtHighestSeqNum;
-                rtpStats.lastSenderReportInterval = sender->rtcpSenderContext.lastSrInterval;
-                rtpStats.senderReportIntervalPacketCount = sender->rtcpSenderContext.srIntervalPacketCount;
-                rtpStats.senderReportIntervalByteCount = sender->rtcpSenderContext.srIntervalByteCount;
+                rtpStats.timestamp = curTime;
                 rtpStats.senderPacketCount = sender->rtpSenderContext.packetCount;
                 rtpStats.senderByteCount = sender->rtpSenderContext.byteCount;
-                rtpStats.peerClockDelta = sender->rtcpSenderContext.clockDeltaCtx.clockDeltaAvg;
-                rtpStats.roundTripDelayFromClockDelta = (uint32_t)sender->rtcpSenderContext.clockDeltaCtx.rtDelay;
+                rtpStats.receiverReport.timestamp = sender->rtcpSenderContext.lastRrReceptionTimestamp;
+                rtpStats.receiverReport.roundTripDelay = sender->rtcpSenderContext.roundTripDelay;
+                rtpStats.receiverReport.interarrivalJitter = sender->rtcpSenderContext.interarrivalJitter;
+                rtpStats.receiverReport.receiverLostCount = sender->rtcpSenderContext.receiverLostCount;
+                rtpStats.receiverReport.receiverFractionLost = sender->rtcpSenderContext.receiverFractionLost;
+                rtpStats.receiverReport.receiverExtHighestSeqNum = sender->rtcpSenderContext.receiverExtHighestSeqNum;
+                rtpStats.senderReport.timestamp = sender->rtcpSenderContext.lastSrTimestamp;
+                rtpStats.senderReport.lastInterval = sender->rtcpSenderContext.lastSrInterval;
+                rtpStats.senderReport.intervalPacketCount = sender->rtcpSenderContext.srIntervalPacketCount;
+                rtpStats.senderReport.intervalByteCount = sender->rtcpSenderContext.srIntervalByteCount;
+                rtpStats.clockDelta.peerClockDelta = sender->rtcpSenderContext.clockDeltaCtx.clockDeltaAvg;
+                rtpStats.clockDelta.roundTripDelay = (uint32_t)sender->rtcpSenderContext.clockDeltaCtx.rtDelayAvg;
+                rtpStats.clockDelta.peer2meDelay = (uint32_t)sender->rtcpSenderContext.clockDeltaCtx.p2mDelayAvg;
+                rtpStats.clockDelta.me2peerDelay = (uint32_t)sender->rtcpSenderContext.clockDeltaCtx.m2pDelayAvg;
 
                 /* Call the receiver report callback function */
                 sender->rtpStatsCallback(&rtpStats, sender->rtpStatsCallbackUserPtr);

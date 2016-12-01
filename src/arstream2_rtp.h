@@ -65,19 +65,29 @@ typedef struct {
 typedef struct ARSTREAM2_RTP_RtpStats_s
 {
     uint64_t timestamp;
-    int8_t rssi;
-    uint32_t roundTripDelay;
-    uint32_t interarrivalJitter;
-    uint32_t receiverLostCount;
-    uint32_t receiverFractionLost;
-    uint32_t receiverExtHighestSeqNum;
-    uint32_t lastSenderReportInterval;
-    uint32_t senderReportIntervalPacketCount;
-    uint32_t senderReportIntervalByteCount;
     uint32_t senderPacketCount;
     uint64_t senderByteCount;
-    int64_t peerClockDelta;
-    uint32_t roundTripDelayFromClockDelta;
+    struct {
+        uint64_t timestamp;
+        uint32_t lastInterval;
+        uint32_t intervalPacketCount;
+        uint32_t intervalByteCount;
+    } senderReport;
+    struct {
+        uint64_t timestamp;
+        int8_t rssi;
+        uint32_t roundTripDelay;
+        uint32_t interarrivalJitter;
+        uint32_t receiverLostCount;
+        uint32_t receiverFractionLost;
+        uint32_t receiverExtHighestSeqNum;
+    } receiverReport;
+    struct {
+        int64_t peerClockDelta;
+        uint32_t roundTripDelay;
+        uint32_t peer2meDelay;
+        uint32_t me2peerDelay;
+    } clockDelta;
 
 } ARSTREAM2_RTP_RtpStats_t;
 

@@ -950,7 +950,7 @@ int ARSTREAM2_RTCP_ProcessApplicationClockDelta(const uint8_t *buffer, unsigned 
                     {
                         if (context->rtDelayWindow[i] < minRtDelay)
                         {
-                            minRtDelay = context->rtDelay = context->rtDelayWindow[i];
+                            minRtDelay = context->rtDelayWindow[i];
                             context->clockDelta = context->clockDeltaWindow[i];
                         }
                     }
@@ -969,8 +969,6 @@ int ARSTREAM2_RTCP_ProcessApplicationClockDelta(const uint8_t *buffer, unsigned 
                             /* Sliding average, alpha = 1 / ARSTREAM2_RTCP_CLOCKDELTA_AVG_ALPHA */
                             context->rtDelayMinAvg = context->rtDelayMinAvg + (minRtDelay - context->rtDelayMinAvg + ARSTREAM2_RTCP_CLOCKDELTA_AVG_ALPHA / 2) / ARSTREAM2_RTCP_CLOCKDELTA_AVG_ALPHA;
                         }
-
-                        context->rtDelayMin = minRtDelay;
 
                         if (minRtDelay <= context->rtDelayMinAvg * 2)
                         {

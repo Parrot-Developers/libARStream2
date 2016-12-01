@@ -219,8 +219,10 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
         titleLen += snprintf(szTitle + titleLen, 200 - titleLen, "%s", dateAndTime);
         ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "RTP stats output file title: '%s'", szTitle);
         fprintf(context->outputFile, "# %s\n", szTitle);
-        fprintf(context->outputFile, "timestamp rssi roundTripDelay interarrivalJitter receiverLostCount receiverFractionLost receiverExtHighestSeqNum");
-        fprintf(context->outputFile, " lastSenderReportInterval senderReportIntervalPacketCount senderReportIntervalByteCount senderPacketCount senderByteCount peerClockDelta roundTripDelayFromClockDelta");
+        fprintf(context->outputFile, "timestamp senderPacketCount senderByteCount");
+        fprintf(context->outputFile, " receiverReportTimestamp receiverReportRssi receiverReportRoundTripDelay receiverReportInterarrivalJitter receiverReportReceiverLostCount receiverReportReceiverFractionLost receiverReportReceiverExtHighestSeqNum");
+        fprintf(context->outputFile, " senderReportLastInterval senderReportIntervalPacketCount senderReportIntervalByteCount");
+        fprintf(context->outputFile, " peerClockDelta clockDeltaRoundTripDelay clockDeltaPeer2meDelay clockDeltaMe2peerDelay");
         fprintf(context->outputFile, "\n");
         fflush(context->outputFile);
         context->fileOutputTimestamp = 0;
@@ -259,15 +261,18 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
     {
         if (context->outputFile)
         {
-            fprintf(context->outputFile, "%llu %i %lu %lu %lu %lu %lu", (long long unsigned int)rtpStats->timestamp, rtpStats->rssi,
-                    (long unsigned int)rtpStats->roundTripDelay, (long unsigned int)rtpStats->interarrivalJitter,
-                    (long unsigned int)rtpStats->receiverLostCount, (long unsigned int)rtpStats->receiverFractionLost,
-                    (long unsigned int)rtpStats->receiverExtHighestSeqNum);
-            fprintf(context->outputFile, " %lu %lu %lu %lu %llu %lld %lu",
-                    (long unsigned int)rtpStats->lastSenderReportInterval, (long unsigned int)rtpStats->senderReportIntervalPacketCount,
-                    (long unsigned int)rtpStats->senderReportIntervalByteCount, (long unsigned int)rtpStats->senderPacketCount,
-                    (long long unsigned int)rtpStats->senderByteCount, (long long int)rtpStats->peerClockDelta,
-                    (long unsigned int)rtpStats->roundTripDelayFromClockDelta);
+            fprintf(context->outputFile, "%llu %lu %llu", (long long unsigned int)rtpStats->timestamp,
+                    (long unsigned int)rtpStats->senderPacketCount, (long long unsigned int)rtpStats->senderByteCount);
+            fprintf(context->outputFile, " %llu %i %lu %lu %lu %lu %lu", (long long unsigned int)rtpStats->receiverReport.timestamp, rtpStats->receiverReport.rssi,
+                    (long unsigned int)rtpStats->receiverReport.roundTripDelay, (long unsigned int)rtpStats->receiverReport.interarrivalJitter,
+                    (long unsigned int)rtpStats->receiverReport.receiverLostCount, (long unsigned int)rtpStats->receiverReport.receiverFractionLost,
+                    (long unsigned int)rtpStats->receiverReport.receiverExtHighestSeqNum);
+            fprintf(context->outputFile, " %lu %lu %lu",
+                    (long unsigned int)rtpStats->senderReport.lastInterval, (long unsigned int)rtpStats->senderReport.intervalPacketCount,
+                    (long unsigned int)rtpStats->senderReport.intervalByteCount);
+            fprintf(context->outputFile, " %lld %lu %lu %lu",
+                    (long long int)rtpStats->clockDelta.peerClockDelta, (long unsigned int)rtpStats->clockDelta.roundTripDelay,
+                    (long unsigned int)rtpStats->clockDelta.peer2meDelay, (long unsigned int)rtpStats->clockDelta.me2peerDelay);
             fprintf(context->outputFile, "\n");
             fflush(context->outputFile);
         }

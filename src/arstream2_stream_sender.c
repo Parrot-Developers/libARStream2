@@ -1419,7 +1419,7 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
     {
         ARSTREAM2_RTP_RtpStats_t s;
         memcpy(&s, rtpStats, sizeof(ARSTREAM2_RTP_RtpStats_t));
-        s.rssi = streamSender->lastKnownRssi;
+        s.receiverReport.rssi = streamSender->lastKnownRssi;
         ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamSender->rtpStatsCtx, &s);
 
         if (streamSender->rtpStatsCallback)
@@ -1428,20 +1428,20 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
             memset(&rtpsOut, 0, sizeof(ARSTREAM2_StreamStats_RtpStats_t));
 
             /* Map the RTP stats */
-            rtpsOut.timestamp = rtpStats->timestamp;
+            rtpsOut.timestamp = rtpStats->receiverReport.timestamp;
             rtpsOut.rssi = streamSender->lastKnownRssi;
-            rtpsOut.roundTripDelay = rtpStats->roundTripDelay;
-            rtpsOut.interarrivalJitter = rtpStats->interarrivalJitter;
-            rtpsOut.receiverLostCount = rtpStats->receiverLostCount;
-            rtpsOut.receiverFractionLost = rtpStats->receiverFractionLost;
-            rtpsOut.receiverExtHighestSeqNum = rtpStats->receiverExtHighestSeqNum;
-            rtpsOut.lastSenderReportInterval = rtpStats->lastSenderReportInterval;
-            rtpsOut.senderReportIntervalPacketCount = rtpStats->senderReportIntervalPacketCount;
-            rtpsOut.senderReportIntervalByteCount = rtpStats->senderReportIntervalByteCount;
+            rtpsOut.roundTripDelay = rtpStats->receiverReport.roundTripDelay;
+            rtpsOut.interarrivalJitter = rtpStats->receiverReport.interarrivalJitter;
+            rtpsOut.receiverLostCount = rtpStats->receiverReport.receiverLostCount;
+            rtpsOut.receiverFractionLost = rtpStats->receiverReport.receiverFractionLost;
+            rtpsOut.receiverExtHighestSeqNum = rtpStats->receiverReport.receiverExtHighestSeqNum;
+            rtpsOut.lastSenderReportInterval = rtpStats->senderReport.lastInterval;
+            rtpsOut.senderReportIntervalPacketCount = rtpStats->senderReport.intervalPacketCount;
+            rtpsOut.senderReportIntervalByteCount = rtpStats->senderReport.intervalByteCount;
             rtpsOut.senderPacketCount = rtpStats->senderPacketCount;
             rtpsOut.senderByteCount = rtpStats->senderByteCount;
-            rtpsOut.peerClockDelta = rtpStats->peerClockDelta;
-            rtpsOut.roundTripDelayFromClockDelta = rtpStats->roundTripDelayFromClockDelta;
+            rtpsOut.peerClockDelta = rtpStats->clockDelta.peerClockDelta;
+            rtpsOut.roundTripDelayFromClockDelta = rtpStats->clockDelta.roundTripDelay;
 
             /* Call the receiver report callback function */
             streamSender->rtpStatsCallback(&rtpsOut, streamSender->rtpStatsCallbackUserPtr);

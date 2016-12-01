@@ -197,9 +197,7 @@ typedef struct ARSTREAM2_RTCP_ClockDeltaContext_s {
     uint64_t windowStartTimestamp;
     int64_t clockDelta;
     int64_t clockDeltaAvg;
-    int64_t rtDelay;
     int64_t rtDelayAvg;
-    int64_t rtDelayMin;
     int64_t rtDelayMinAvg;
     int64_t p2mDelayAvg;
     int64_t m2pDelayAvg;
