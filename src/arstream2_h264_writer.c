@@ -587,6 +587,17 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_pictureTiming(ARSTREAM2_H264Writ
         }
     }
 
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (writer->cacheLength & 7)
+    {
+        ret = writeBits(writer, 1, 1, 1);
+        if (ret < 0)
+        {
+            return -1;
+        }
+        _bitsWritten += ret;
+    }
+
     ret = bitstreamByteAlign(writer, 1);
     if (ret < 0)
     {
@@ -701,6 +712,17 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_recoveryPoint(ARSTREAM2_H264Writ
     }
     _bitsWritten += ret;
 
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (writer->cacheLength & 7)
+    {
+        ret = writeBits(writer, 1, 1, 1);
+        if (ret < 0)
+        {
+            return -1;
+        }
+        _bitsWritten += ret;
+    }
+
     ret = bitstreamByteAlign(writer, 1);
     if (ret < 0)
     {
@@ -767,6 +789,17 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_userDataUnregistered(ARSTREAM2_H
         if (ret < 0)
         {
             return ret;
+        }
+        _bitsWritten += ret;
+    }
+
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (writer->cacheLength & 7)
+    {
+        ret = writeBits(writer, 1, 1, 1);
+        if (ret < 0)
+        {
+            return -1;
         }
         _bitsWritten += ret;
     }
