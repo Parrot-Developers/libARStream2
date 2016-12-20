@@ -261,13 +261,13 @@ typedef struct ARSTREAM2_RTCP_ReceiverContext_s {
     ARSTREAM2_RTCP_SdesItem_t peerSdesItem[ARSTREAM2_RTCP_SDES_ITEM_MAX_COUNT];
     int peerSdesItemCount;
 
-    uint32_t prevSrRtpTimestamp;
+    uint64_t extHighestRtpTimestamp;
+    uint64_t prevSrRtpTimestamp;
     uint64_t prevSrNtpTimestamp;
     uint32_t prevSrPacketCount;
     uint32_t prevSrByteCount;
     int64_t tsAnum;
     int64_t tsAden;
-    int64_t tsB;
     uint32_t lastSrInterval; // in microseconds
     uint32_t srIntervalPacketCount; // over the last SR interval
     uint32_t srIntervalByteCount; // over the last SR interval
@@ -360,16 +360,16 @@ int ARSTREAM2_RTCP_Receiver_ProcessCompoundPacket(const uint8_t *packet, unsigne
                                                   uint64_t receptionTimestamp,
                                                   ARSTREAM2_RTCP_ReceiverContext_t *context);
 
-static inline uint64_t ARSTREAM2_RTCP_Receiver_GetNtpTimestampFromRtpTimestamp(ARSTREAM2_RTCP_ReceiverContext_t *context, uint32_t rtpTimestamp);
+static inline uint64_t ARSTREAM2_RTCP_Receiver_GetNtpTimestampFromRtpTimestamp(ARSTREAM2_RTCP_ReceiverContext_t *context, uint64_t extRtpTimestamp);
 
 
 /*
  * Inline functions
  */
 
-static inline uint64_t ARSTREAM2_RTCP_Receiver_GetNtpTimestampFromRtpTimestamp(ARSTREAM2_RTCP_ReceiverContext_t *context, uint32_t rtpTimestamp)
+static inline uint64_t ARSTREAM2_RTCP_Receiver_GetNtpTimestampFromRtpTimestamp(ARSTREAM2_RTCP_ReceiverContext_t *context, uint64_t extRtpTimestamp)
 {
-    return ((context->tsAnum != 0) && (context->tsAden != 0)) ? (uint64_t)((((int64_t)rtpTimestamp - context->tsB) * context->tsAden + context->tsAnum / 2) / context->tsAnum) : 0;
+    return ((context->tsAnum != 0) && (context->tsAden != 0)) ? (uint64_t)((((int64_t)extRtpTimestamp - (int64_t)context->prevSrRtpTimestamp) * context->tsAden + context->tsAnum / 2) / context->tsAnum + context->prevSrNtpTimestamp) : 0;
 }
 
 #endif /* _ARSTREAM2_RTCP_H_ */

@@ -1465,7 +1465,7 @@ int ARSTREAM2_RTP_Receiver_PacketFifoAddFromMsgVec(ARSTREAM2_RTP_ReceiverContext
                 }
                 item->packet.ntpTimestampRaw = (item->packet.extRtpTimestamp * 1000000 + context->rtpClockRate / 2) / context->rtpClockRate;
                 item->packet.ntpTimestampRawUnskewed = ((int64_t)item->packet.ntpTimestampRaw + context->clockSkew >= 0) ? item->packet.ntpTimestampRaw + context->clockSkew : 0;
-                item->packet.ntpTimestamp = ARSTREAM2_RTCP_Receiver_GetNtpTimestampFromRtpTimestamp(rtcpContext, item->packet.rtpTimestamp);
+                item->packet.ntpTimestamp = ARSTREAM2_RTCP_Receiver_GetNtpTimestampFromRtpTimestamp(rtcpContext, item->packet.extRtpTimestamp);
                 item->packet.ntpTimestampUnskewed = ((int64_t)item->packet.ntpTimestamp + context->clockSkew >= 0) ? item->packet.ntpTimestamp + context->clockSkew : 0;
                 item->packet.ntpTimestampLocal = ((rtcpContext->clockDeltaCtx.clockDeltaAvg != 0) && (item->packet.ntpTimestamp != 0)) ? (item->packet.ntpTimestamp - rtcpContext->clockDeltaCtx.clockDeltaAvg) : 0;
                 item->packet.timeoutTimestamp = curTime + context->nominalDelay; //TODO: compute the expected arrival time

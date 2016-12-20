@@ -240,7 +240,7 @@ int ARSTREAM2_RTCP_Receiver_ProcessSenderReport(const uint8_t *buffer, unsigned 
 {
     const ARSTREAM2_RTCP_SenderReport_t *senderReport = (const ARSTREAM2_RTCP_SenderReport_t*)buffer;
     uint32_t ssrc, rtpTimestamp, senderPacketCount, senderByteCount;
-    uint64_t ntpTimestamp;
+    uint64_t extRtpTimestamp, ntpTimestamp;
 
     if ((!buffer) || (!context))
     {
@@ -279,10 +279,11 @@ int ARSTREAM2_RTCP_Receiver_ProcessSenderReport(const uint8_t *buffer, unsigned 
     }
 
     ssrc = ntohl(senderReport->ssrc);
-    ntpTimestamp = ((uint64_t)(ntohl(senderReport->ntpTimestampH)) * 1000000) + (((uint64_t)(ntohl(senderReport->ntpTimestampL)) * 1000000) >> 32);
-    rtpTimestamp = ntohl(senderReport->rtpTimestamp);
     senderPacketCount = ntohl(senderReport->senderPacketCount);
     senderByteCount = ntohl(senderReport->senderByteCount);
+
+    ntpTimestamp = ((uint64_t)(ntohl(senderReport->ntpTimestampH)) * 1000000) + (((uint64_t)(ntohl(senderReport->ntpTimestampL)) * 1000000) >> 32);
+    rtpTimestamp = ntohl(senderReport->rtpTimestamp);
 
     if (ssrc != context->senderSsrc)
     {
@@ -301,13 +302,36 @@ int ARSTREAM2_RTCP_Receiver_ProcessSenderReport(const uint8_t *buffer, unsigned 
     }
     if (!context->prevSrRtpTimestamp)
     {
-        context->prevSrRtpTimestamp = rtpTimestamp;
+        extRtpTimestamp = rtpTimestamp;
+        context->extHighestRtpTimestamp = extRtpTimestamp;
+        context->prevSrRtpTimestamp = extRtpTimestamp;
+    }
+    else
+    {
+        extRtpTimestamp = (context->extHighestRtpTimestamp & 0xFFFFFFFF00000000ULL) | ((uint64_t)rtpTimestamp & 0xFFFFFFFFULL);
+        if ((int64_t)extRtpTimestamp - (int64_t)context->prevSrRtpTimestamp < -2147483648LL)
+        {
+            extRtpTimestamp += 0x100000000ULL;
+        }
+        else if ((int64_t)extRtpTimestamp - (int64_t)context->prevSrRtpTimestamp > 2147483648LL)
+        {
+            extRtpTimestamp -= 0x100000000ULL;
+        }
+        if (extRtpTimestamp > context->extHighestRtpTimestamp)
+        {
+            context->extHighestRtpTimestamp = extRtpTimestamp;
+        }
     }
 
-    // NTP to RTP linear regression: RTP = a * NTP + b
-    context->tsAnum = (int64_t)(rtpTimestamp - context->prevSrRtpTimestamp);
+    /* NTP to RTP linear regression:
+     * for samples m and n, RTPn = a * NTPn + b and RTPm = a * NTPm + b
+     * <=> RTPn - RTPm = a * (NTPn - NTPm)
+     * <=> NTPn = (RTPn - RTPm) / a + NTPm
+     * m sample is the last RTP/NTP pair received from a RTCP sender report
+     * n sample in the current RTP packet for which we want to derive the NTP timestamp
+     */
+    context->tsAnum = (int64_t)(extRtpTimestamp - context->prevSrRtpTimestamp);
     context->tsAden = (int64_t)(ntpTimestamp - context->prevSrNtpTimestamp);
-    context->tsB = (context->tsAden) ? (int64_t)rtpTimestamp - (int64_t)((context->tsAnum * ntpTimestamp + context->tsAden / 2) / context->tsAden) : 0;
 
     // Packet and byte rates
     context->lastSrInterval = (uint32_t)(ntpTimestamp - context->prevSrNtpTimestamp);
@@ -322,7 +346,7 @@ int ARSTREAM2_RTCP_Receiver_ProcessSenderReport(const uint8_t *buffer, unsigned 
     }
 
     // Update values
-    context->prevSrRtpTimestamp = rtpTimestamp;
+    context->prevSrRtpTimestamp = extRtpTimestamp;
     context->prevSrNtpTimestamp = ntpTimestamp;
     context->prevSrPacketCount = senderPacketCount;
     context->prevSrByteCount = senderByteCount;
