@@ -81,7 +81,7 @@ static int ARSTREAM2_H264Filter_Sync(ARSTREAM2_H264Filter_t *filter)
 
 static void ARSTREAM2_H264Filter_HandleGapsInFrameNum(ARSTREAM2_H264Filter_t *filter)
 {
-    if ((filter->currentAuIsRef) && (filter->previousAuFrameNum != -1) && (filter->currentAuFrameNum != (filter->previousAuFrameNum + 1) % filter->maxFrameNum))
+    if ((filter->currentAuIsRef) && (filter->previousAuFrameNum != -1) && (!filter->currentAuIsIdr) && (filter->currentAuFrameNum != (filter->previousAuFrameNum + 1) % filter->maxFrameNum))
     {
         /* count missed frames (missing non-ref frames are not counted as missing) */
         int currentAuFrameNum = filter->currentAuFrameNum;
@@ -90,14 +90,20 @@ static void ARSTREAM2_H264Filter_HandleGapsInFrameNum(ARSTREAM2_H264Filter_t *fi
             currentAuFrameNum += filter->maxFrameNum;
         }
         int missed = currentAuFrameNum - filter->previousAuFrameNum - 1;
-        filter->stats.totalFrameCount += missed;
-        filter->stats.missedFrameCount += missed;
+
+        /* ignore very large gaps in frame nums since it is probably a combination of missed frame + frame_num reset on IDR frame */
+        if (missed >= filter->inferredIdrInterval) missed = 0;
+
+        /* mark the ref as missing even if is an ignored very large gap */
         if (filter->currentAuRefMacroblockStatus)
         {
             memset(filter->currentAuRefMacroblockStatus, ARSTREAM2_STREAM_STATS_MACROBLOCK_STATUS_MISSING, filter->mbCount);
         }
 
-        /* update macroblock status */
+        filter->stats.totalFrameCount += missed;
+        filter->stats.missedFrameCount += missed;
+
+        /* update video stats macroblock status counters */
         int i, j, n;
         for (n = 0; n < missed; n++)
         {
@@ -146,6 +152,11 @@ static int ARSTREAM2_H264Filter_ParseNalu(ARSTREAM2_H264Filter_t *filter, ARSTRE
         {
             case ARSTREAM2_H264_NALU_TYPE_SLICE_IDR:
                 au->syncType = ARSTREAM2_H264_AU_SYNC_TYPE_IDR;
+                if (filter->previousAuFrameNum != -1)
+                {
+                    filter->inferredIdrInterval = (filter->previousAuFrameNum + 1 < ARSTREAM2_H264_FILTER_MAX_INFERRED_IDR_INTERVAL)
+                            ? filter->previousAuFrameNum + 1 : ARSTREAM2_H264_FILTER_MAX_INFERRED_IDR_INTERVAL;
+                }
                 // fall through
             case ARSTREAM2_H264_NALU_TYPE_SLICE:
                 /* Slice */
@@ -161,6 +172,7 @@ static int ARSTREAM2_H264Filter_ParseNalu(ARSTREAM2_H264Filter_t *filter, ARSTRE
                     }
                     else
                     {
+                        filter->currentAuIsIdr = (au->syncType == ARSTREAM2_H264_AU_SYNC_TYPE_IDR) ? 1 : 0;
                         filter->currentAuIsRef = (sliceInfo.nal_ref_idc != 0) ? 1 : 0;
                         if (sliceInfo.sliceTypeMod5 == 2)
                         {
@@ -334,6 +346,7 @@ void ARSTREAM2_H264Filter_ResetAu(ARSTREAM2_H264Filter_t *filter)
     }
     if (filter->currentAuIsRef) filter->previousAuFrameNum = filter->currentAuFrameNum;
     filter->currentAuFrameNum = -1;
+    filter->currentAuIsIdr = 0;
     filter->currentAuIsRef = 0;
     filter->savedSliceContextAvailable = 0;
 }
@@ -783,6 +796,7 @@ eARSTREAM2_ERROR ARSTREAM2_H264Filter_Init(ARSTREAM2_H264Filter_Handle *filterHa
         filter->spsPpsCallbackUserPtr = config->spsPpsCallbackUserPtr;
         filter->stats.mbStatusZoneCount = ARSTREAM2_H264_MB_STATUS_ZONE_COUNT;
         filter->stats.mbStatusClassCount = ARSTREAM2_H264_MB_STATUS_CLASS_COUNT;
+        filter->inferredIdrInterval = ARSTREAM2_H264_FILTER_MAX_INFERRED_IDR_INTERVAL;
     }
 
     if (ret == ARSTREAM2_OK)
