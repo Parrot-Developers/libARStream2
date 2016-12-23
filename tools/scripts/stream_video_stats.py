@@ -474,7 +474,7 @@ def videoStats(inFile, outFile):
 
     axOverallErrorMbs = fig1.add_subplot(3, 6, 16)
     axOverallErrorMbs.set_title("Overall error macroblocks", color='0.4')
-    axOverallErrorMbs.pie([overallMissingConcealedMbCount, overallMissingMbCount, overallErrorPropagationMbCount, overallUnknownMbCount], labels=['Missing (concealed)', 'Missing', 'Error propagation', 'Unknown'], colors=['salmon', 'firebrick', 'cadetblue', 'k'], autopct='%1.1f%%', startangle=90)
+    axOverallErrorMbs.pie([overallMissingConcealedMbCount, overallMissingMbCount, overallErrorPropagationMbCount, overallUnknownMbCount], labels=['Missing (concealed)', 'Missing', 'Error propagation', 'Unknown'], colors=['salmon', 'firebrick', 'cadetblue', '0.3'], autopct='%1.1f%%', startangle=90)
     axOverallErrorMbs.set_aspect('equal')
 
 
@@ -1032,7 +1032,7 @@ def simpleVideoStats(inFile, outFile):
 
     axOverallErrorMbs = fig1.add_subplot(2, 2, 4)
     axOverallErrorMbs.set_title("Overall error macroblocks", color='0.4')
-    axOverallErrorMbs.pie([overallMissingConcealedMbCount, overallMissingMbCount, overallErrorPropagationMbCount, overallUnknownMbCount], labels=['Missing (concealed)', 'Missing', 'Error propagation', 'Unknown'], colors=['salmon', 'firebrick', 'cadetblue', 'k'], autopct='%1.1f%%', startangle=90)
+    axOverallErrorMbs.pie([overallMissingConcealedMbCount, overallMissingMbCount, overallErrorPropagationMbCount, overallUnknownMbCount], labels=['Missing (concealed)', 'Missing', 'Error propagation', 'Unknown'], colors=['salmon', 'firebrick', 'cadetblue', '0.3'], autopct='%1.1f%%', startangle=90)
     axOverallErrorMbs.set_aspect('equal')
 
 
