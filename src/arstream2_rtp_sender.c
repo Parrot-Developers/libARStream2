@@ -1289,8 +1289,6 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
         if (sender->nextSrDelay < ARSTREAM2_RTCP_SENDER_MIN_PACKET_TIME_INTERVAL) sender->nextSrDelay = ARSTREAM2_RTCP_SENDER_MIN_PACKET_TIME_INTERVAL;
     }
 
-    sender->nextSrDelay = sender->nextSrDelay - srDelay;
-
     return retVal;
 }
 
