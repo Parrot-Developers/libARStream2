@@ -350,6 +350,11 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_pictureTiming(ARSTREAM2_H264Writ
             }
         }
     }
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (payloadSizeBits & 7)
+    {
+        payloadSizeBits++;
+    }
     payloadSize = (payloadSizeBits + 7) / 8;
 
     /*while (payloadType > 255) // logically dead code
@@ -640,6 +645,11 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_recoveryPoint(ARSTREAM2_H264Writ
 
     payloadType = ARSTREAM2_H264_SEI_PAYLOAD_TYPE_RECOVERY_POINT;
     payloadSizeBits = recoveryFrameCntSize + 1 + 1 + 2;
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (payloadSizeBits & 7)
+    {
+        payloadSizeBits++;
+    }
     payloadSize = (payloadSizeBits + 7) / 8;
 
     /*while (payloadType > 255) // logically dead code
@@ -793,16 +803,10 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_userDataUnregistered(ARSTREAM2_H
         _bitsWritten += ret;
     }
 
-    // If not byte-aligned, write '1' bit and then align to byte
-    if (writer->cacheLength & 7)
-    {
-        ret = writeBits(writer, 1, 1, 1);
-        if (ret < 0)
-        {
-            return -1;
-        }
-        _bitsWritten += ret;
-    }
+    /* If not byte-aligned, write '1' bit and then align to byte...
+     * ... but it's useless here as user data SEI are always byte-aligned.
+     * So we do nothing more.
+     */
 
     ret = bitstreamByteAlign(writer, 1);
     if (ret < 0)
