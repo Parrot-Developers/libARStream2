@@ -29,19 +29,30 @@ def videoStats(inFile, outFile):
         title = title.strip()
     else:
         title = inFile
+    if firstLine != '' and firstLine.find(',') != -1:
+        sep = ','
+    else:
+        sep = ' '
     plt.suptitle('Video stats (' + title + ')', fontsize=16, color='0.4')
 
-    data = pd.read_csv(inFile, sep=' ', comment='#', skip_blank_lines=True)
+    data = pd.read_csv(inFile, sep=sep, comment='#', skip_blank_lines=True)
 
 
-    # for compatibility with old stats files
+    # for compatibility with old stats files and files from telemetry blackbox
     if 'erroredSecondCount' in data.columns:
         lblEsr = 'erroredSecondCount'
-        lblEsrZ0 = 'erroredSecondCountByZone[0]'
-        lblEsrZ1 = 'erroredSecondCountByZone[1]'
-        lblEsrZ2 = 'erroredSecondCountByZone[2]'
-        lblEsrZ3 = 'erroredSecondCountByZone[3]'
-        lblEsrZ4 = 'erroredSecondCountByZone[4]'
+        if 'erroredSecondCountByZone[0]' in data.columns:
+            lblEsrZ0 = 'erroredSecondCountByZone[0]'
+            lblEsrZ1 = 'erroredSecondCountByZone[1]'
+            lblEsrZ2 = 'erroredSecondCountByZone[2]'
+            lblEsrZ3 = 'erroredSecondCountByZone[3]'
+            lblEsrZ4 = 'erroredSecondCountByZone[4]'
+        else:
+            lblEsrZ0 = 'erroredSecondCountByZone_0'
+            lblEsrZ1 = 'erroredSecondCountByZone_1'
+            lblEsrZ2 = 'erroredSecondCountByZone_2'
+            lblEsrZ3 = 'erroredSecondCountByZone_3'
+            lblEsrZ4 = 'erroredSecondCountByZone_4'
     else:
         lblEsr = 'errorSecondCount'
         lblEsrZ0 = 'errorSecondCountByZone[0]'
@@ -53,6 +64,68 @@ def videoStats(inFile, outFile):
         lblErroredOutputFrameCount = 'erroredOutputFrameCount'
     else:
         lblErroredOutputFrameCount = ''
+    if 'macroblockStatus[0][0]' in data.columns:
+        lblMbStatus0_0 = 'macroblockStatus[0][0]'
+        lblMbStatus0_1 = 'macroblockStatus[0][1]'
+        lblMbStatus0_2 = 'macroblockStatus[0][2]'
+        lblMbStatus0_3 = 'macroblockStatus[0][3]'
+        lblMbStatus0_4 = 'macroblockStatus[0][4]'
+        lblMbStatus1_0 = 'macroblockStatus[1][0]'
+        lblMbStatus1_1 = 'macroblockStatus[1][1]'
+        lblMbStatus1_2 = 'macroblockStatus[1][2]'
+        lblMbStatus1_3 = 'macroblockStatus[1][3]'
+        lblMbStatus1_4 = 'macroblockStatus[1][4]'
+        lblMbStatus2_0 = 'macroblockStatus[2][0]'
+        lblMbStatus2_1 = 'macroblockStatus[2][1]'
+        lblMbStatus2_2 = 'macroblockStatus[2][2]'
+        lblMbStatus2_3 = 'macroblockStatus[2][3]'
+        lblMbStatus2_4 = 'macroblockStatus[2][4]'
+        lblMbStatus3_0 = 'macroblockStatus[3][0]'
+        lblMbStatus3_1 = 'macroblockStatus[3][1]'
+        lblMbStatus3_2 = 'macroblockStatus[3][2]'
+        lblMbStatus3_3 = 'macroblockStatus[3][3]'
+        lblMbStatus3_4 = 'macroblockStatus[3][4]'
+        lblMbStatus4_0 = 'macroblockStatus[4][0]'
+        lblMbStatus4_1 = 'macroblockStatus[4][1]'
+        lblMbStatus4_2 = 'macroblockStatus[4][2]'
+        lblMbStatus4_3 = 'macroblockStatus[4][3]'
+        lblMbStatus4_4 = 'macroblockStatus[4][4]'
+        lblMbStatus5_0 = 'macroblockStatus[5][0]'
+        lblMbStatus5_1 = 'macroblockStatus[5][1]'
+        lblMbStatus5_2 = 'macroblockStatus[5][2]'
+        lblMbStatus5_3 = 'macroblockStatus[5][3]'
+        lblMbStatus5_4 = 'macroblockStatus[5][4]'
+    else:
+        lblMbStatus0_0 = 'macroblockStatus_0'
+        lblMbStatus0_1 = 'macroblockStatus_1'
+        lblMbStatus0_2 = 'macroblockStatus_2'
+        lblMbStatus0_3 = 'macroblockStatus_3'
+        lblMbStatus0_4 = 'macroblockStatus_4'
+        lblMbStatus1_0 = 'macroblockStatus_5'
+        lblMbStatus1_1 = 'macroblockStatus_6'
+        lblMbStatus1_2 = 'macroblockStatus_7'
+        lblMbStatus1_3 = 'macroblockStatus_8'
+        lblMbStatus1_4 = 'macroblockStatus_9'
+        lblMbStatus2_0 = 'macroblockStatus_10'
+        lblMbStatus2_1 = 'macroblockStatus_11'
+        lblMbStatus2_2 = 'macroblockStatus_12'
+        lblMbStatus2_3 = 'macroblockStatus_13'
+        lblMbStatus2_4 = 'macroblockStatus_14'
+        lblMbStatus3_0 = 'macroblockStatus_15'
+        lblMbStatus3_1 = 'macroblockStatus_16'
+        lblMbStatus3_2 = 'macroblockStatus_17'
+        lblMbStatus3_3 = 'macroblockStatus_18'
+        lblMbStatus3_4 = 'macroblockStatus_19'
+        lblMbStatus4_0 = 'macroblockStatus_20'
+        lblMbStatus4_1 = 'macroblockStatus_21'
+        lblMbStatus4_2 = 'macroblockStatus_22'
+        lblMbStatus4_3 = 'macroblockStatus_23'
+        lblMbStatus4_4 = 'macroblockStatus_24'
+        lblMbStatus5_0 = 'macroblockStatus_25'
+        lblMbStatus5_1 = 'macroblockStatus_26'
+        lblMbStatus5_2 = 'macroblockStatus_27'
+        lblMbStatus5_3 = 'macroblockStatus_28'
+        lblMbStatus5_4 = 'macroblockStatus_29'
 
 
     ####################
@@ -383,20 +456,32 @@ def videoStats(inFile, outFile):
     timestampDeltaStd = []
     for i, val in enumerate(data['outputFrameCount']):
         if i > 0:
-            timestampDelta.append(float(dataTimestampDelta[i]) / dataOutputFrameCount[i] / 1000.)
-            timestampDeltaStd.append(np.sqrt(np.abs(float(dataTimestampDeltaSq[i]) / dataOutputFrameCount[i] / 1000000. - (timestampDelta[-1] * timestampDelta[-1]))))
+            if val != 0:
+                timestampDelta.append(float(dataTimestampDelta[i]) / dataOutputFrameCount[i] / 1000.)
+                timestampDeltaStd.append(np.sqrt(np.abs(float(dataTimestampDeltaSq[i]) / dataOutputFrameCount[i] / 1000000. - (timestampDelta[-1] * timestampDelta[-1]))))
+            else:
+                timestampDelta.append(0.)
+                timestampDeltaStd.append(0.)
     timingError = []
     timingErrorStd = []
     for i, val in enumerate(data['outputFrameCount']):
         if i > 0:
-            timingError.append(float(dataTimingError[i]) / dataOutputFrameCount[i] / 1000.)
-            timingErrorStd.append(np.sqrt(np.abs(float(dataTimingErrorSq[i]) / dataOutputFrameCount[i] / 1000000. - (timingError[-1] * timingError[-1]))))
+            if val != 0:
+                timingError.append(float(dataTimingError[i]) / dataOutputFrameCount[i] / 1000.)
+                timingErrorStd.append(np.sqrt(np.abs(float(dataTimingErrorSq[i]) / dataOutputFrameCount[i] / 1000000. - (timingError[-1] * timingError[-1]))))
+            else:
+                timingError.append(0.)
+                timingErrorStd.append(0.)
     estimatedLatency = []
     estimatedLatencyStd = []
     for i, val in enumerate(data['outputFrameCount']):
         if i > 0:
-            estimatedLatency.append(float(dataEstimatedLatency[i]) / dataOutputFrameCount[i] / 1000.)
-            estimatedLatencyStd.append(np.sqrt(np.abs(float(dataEstimatedLatencySq[i]) / dataOutputFrameCount[i] / 1000000. - (estimatedLatency[-1] * estimatedLatency[-1]))))
+            if val != 0:
+                estimatedLatency.append(float(dataEstimatedLatency[i]) / dataOutputFrameCount[i] / 1000.)
+                estimatedLatencyStd.append(np.sqrt(np.abs(float(dataEstimatedLatencySq[i]) / dataOutputFrameCount[i] / 1000000. - (estimatedLatency[-1] * estimatedLatency[-1]))))
+            else:
+                estimatedLatency.append(0.)
+                estimatedLatencyStd.append(0.)
 
     axTimingsByTime = fig1.add_subplot(3, 3, 4)
     axTimingsByTime.set_title("Timings across time", color='0.4')
@@ -456,12 +541,12 @@ def videoStats(inFile, outFile):
     #  Overall macroblocks  #
     #########################
 
-    overallUnknownMbCount = float(data['macroblockStatus[0][0]'].iat[-1] + data['macroblockStatus[0][1]'].iat[-1] + data['macroblockStatus[0][2]'].iat[-1] + data['macroblockStatus[0][3]'].iat[-1] + data['macroblockStatus[0][4]'].iat[-1])
-    overallValidISliceMbCount = float(data['macroblockStatus[1][0]'].iat[-1] + data['macroblockStatus[1][1]'].iat[-1] + data['macroblockStatus[1][2]'].iat[-1] + data['macroblockStatus[1][3]'].iat[-1] + data['macroblockStatus[1][4]'].iat[-1])
-    overallValidPSliceMbCount = float(data['macroblockStatus[2][0]'].iat[-1] + data['macroblockStatus[2][1]'].iat[-1] + data['macroblockStatus[2][2]'].iat[-1] + data['macroblockStatus[2][3]'].iat[-1] + data['macroblockStatus[2][4]'].iat[-1])
-    overallMissingConcealedMbCount = float(data['macroblockStatus[3][0]'].iat[-1] + data['macroblockStatus[3][1]'].iat[-1] + data['macroblockStatus[3][2]'].iat[-1] + data['macroblockStatus[3][3]'].iat[-1] + data['macroblockStatus[3][4]'].iat[-1])
-    overallMissingMbCount = float(data['macroblockStatus[4][0]'].iat[-1] + data['macroblockStatus[4][1]'].iat[-1] + data['macroblockStatus[4][2]'].iat[-1] + data['macroblockStatus[4][3]'].iat[-1] + data['macroblockStatus[4][4]'].iat[-1])
-    overallErrorPropagationMbCount = float(data['macroblockStatus[5][0]'].iat[-1] + data['macroblockStatus[5][1]'].iat[-1] + data['macroblockStatus[5][2]'].iat[-1] + data['macroblockStatus[5][3]'].iat[-1] + data['macroblockStatus[5][4]'].iat[-1])
+    overallUnknownMbCount = float(data[lblMbStatus0_0].iat[-1] + data[lblMbStatus0_1].iat[-1] + data[lblMbStatus0_2].iat[-1] + data[lblMbStatus0_3].iat[-1] + data[lblMbStatus0_4].iat[-1])
+    overallValidISliceMbCount = float(data[lblMbStatus1_0].iat[-1] + data[lblMbStatus1_1].iat[-1] + data[lblMbStatus1_2].iat[-1] + data[lblMbStatus1_3].iat[-1] + data[lblMbStatus1_4].iat[-1])
+    overallValidPSliceMbCount = float(data[lblMbStatus2_0].iat[-1] + data[lblMbStatus2_1].iat[-1] + data[lblMbStatus2_2].iat[-1] + data[lblMbStatus2_3].iat[-1] + data[lblMbStatus2_4].iat[-1])
+    overallMissingConcealedMbCount = float(data[lblMbStatus3_0].iat[-1] + data[lblMbStatus3_1].iat[-1] + data[lblMbStatus3_2].iat[-1] + data[lblMbStatus3_3].iat[-1] + data[lblMbStatus3_4].iat[-1])
+    overallMissingMbCount = float(data[lblMbStatus4_0].iat[-1] + data[lblMbStatus4_1].iat[-1] + data[lblMbStatus4_2].iat[-1] + data[lblMbStatus4_3].iat[-1] + data[lblMbStatus4_4].iat[-1])
+    overallErrorPropagationMbCount = float(data[lblMbStatus5_0].iat[-1] + data[lblMbStatus5_1].iat[-1] + data[lblMbStatus5_2].iat[-1] + data[lblMbStatus5_3].iat[-1] + data[lblMbStatus5_4].iat[-1])
     overallValidTotalMbCount = overallValidISliceMbCount + overallValidPSliceMbCount
     overallInvalidTotalMbCount = overallUnknownMbCount + overallMissingConcealedMbCount + overallMissingMbCount + overallErrorPropagationMbCount
     overallTotalMbCount = overallValidTotalMbCount + overallInvalidTotalMbCount
@@ -482,41 +567,41 @@ def videoStats(inFile, outFile):
     #  Macroblocks across time  #
     #############################
 
-    dataUnknownMb0 = np.subtract(data['macroblockStatus[0][0]'][1:], data['macroblockStatus[0][0]'][:-1])
-    dataUnknownMb1 = np.subtract(data['macroblockStatus[0][1]'][1:], data['macroblockStatus[0][1]'][:-1])
-    dataUnknownMb2 = np.subtract(data['macroblockStatus[0][2]'][1:], data['macroblockStatus[0][2]'][:-1])
-    dataUnknownMb3 = np.subtract(data['macroblockStatus[0][3]'][1:], data['macroblockStatus[0][3]'][:-1])
-    dataUnknownMb4 = np.subtract(data['macroblockStatus[0][4]'][1:], data['macroblockStatus[0][4]'][:-1])
+    dataUnknownMb0 = np.subtract(data[lblMbStatus0_0][1:], data[lblMbStatus0_0][:-1])
+    dataUnknownMb1 = np.subtract(data[lblMbStatus0_1][1:], data[lblMbStatus0_1][:-1])
+    dataUnknownMb2 = np.subtract(data[lblMbStatus0_2][1:], data[lblMbStatus0_2][:-1])
+    dataUnknownMb3 = np.subtract(data[lblMbStatus0_3][1:], data[lblMbStatus0_3][:-1])
+    dataUnknownMb4 = np.subtract(data[lblMbStatus0_4][1:], data[lblMbStatus0_4][:-1])
     dataUnknownMb = np.add(dataUnknownMb0, np.add(dataUnknownMb1, np.add(dataUnknownMb2, np.add(dataUnknownMb3, dataUnknownMb4))))
-    dataValidISliceMb0 = np.subtract(data['macroblockStatus[1][0]'][1:], data['macroblockStatus[1][0]'][:-1])
-    dataValidISliceMb1 = np.subtract(data['macroblockStatus[1][1]'][1:], data['macroblockStatus[1][1]'][:-1])
-    dataValidISliceMb2 = np.subtract(data['macroblockStatus[1][2]'][1:], data['macroblockStatus[1][2]'][:-1])
-    dataValidISliceMb3 = np.subtract(data['macroblockStatus[1][3]'][1:], data['macroblockStatus[1][3]'][:-1])
-    dataValidISliceMb4 = np.subtract(data['macroblockStatus[1][4]'][1:], data['macroblockStatus[1][4]'][:-1])
+    dataValidISliceMb0 = np.subtract(data[lblMbStatus1_0][1:], data[lblMbStatus1_0][:-1])
+    dataValidISliceMb1 = np.subtract(data[lblMbStatus1_1][1:], data[lblMbStatus1_1][:-1])
+    dataValidISliceMb2 = np.subtract(data[lblMbStatus1_2][1:], data[lblMbStatus1_2][:-1])
+    dataValidISliceMb3 = np.subtract(data[lblMbStatus1_3][1:], data[lblMbStatus1_3][:-1])
+    dataValidISliceMb4 = np.subtract(data[lblMbStatus1_4][1:], data[lblMbStatus1_4][:-1])
     dataValidISliceMb = np.add(dataValidISliceMb0, np.add(dataValidISliceMb1, np.add(dataValidISliceMb2, np.add(dataValidISliceMb3, dataValidISliceMb4))))
-    dataValidPSliceMb0 = np.subtract(data['macroblockStatus[2][0]'][1:], data['macroblockStatus[2][0]'][:-1])
-    dataValidPSliceMb1 = np.subtract(data['macroblockStatus[2][1]'][1:], data['macroblockStatus[2][1]'][:-1])
-    dataValidPSliceMb2 = np.subtract(data['macroblockStatus[2][2]'][1:], data['macroblockStatus[2][2]'][:-1])
-    dataValidPSliceMb3 = np.subtract(data['macroblockStatus[2][3]'][1:], data['macroblockStatus[2][3]'][:-1])
-    dataValidPSliceMb4 = np.subtract(data['macroblockStatus[2][4]'][1:], data['macroblockStatus[2][4]'][:-1])
+    dataValidPSliceMb0 = np.subtract(data[lblMbStatus2_0][1:], data[lblMbStatus2_0][:-1])
+    dataValidPSliceMb1 = np.subtract(data[lblMbStatus2_1][1:], data[lblMbStatus2_1][:-1])
+    dataValidPSliceMb2 = np.subtract(data[lblMbStatus2_2][1:], data[lblMbStatus2_2][:-1])
+    dataValidPSliceMb3 = np.subtract(data[lblMbStatus2_3][1:], data[lblMbStatus2_3][:-1])
+    dataValidPSliceMb4 = np.subtract(data[lblMbStatus2_4][1:], data[lblMbStatus2_4][:-1])
     dataValidPSliceMb = np.add(dataValidPSliceMb0, np.add(dataValidPSliceMb1, np.add(dataValidPSliceMb2, np.add(dataValidPSliceMb3, dataValidPSliceMb4))))
-    dataMissingConcealedMb0 = np.subtract(data['macroblockStatus[3][0]'][1:], data['macroblockStatus[3][0]'][:-1])
-    dataMissingConcealedMb1 = np.subtract(data['macroblockStatus[3][1]'][1:], data['macroblockStatus[3][1]'][:-1])
-    dataMissingConcealedMb2 = np.subtract(data['macroblockStatus[3][2]'][1:], data['macroblockStatus[3][2]'][:-1])
-    dataMissingConcealedMb3 = np.subtract(data['macroblockStatus[3][3]'][1:], data['macroblockStatus[3][3]'][:-1])
-    dataMissingConcealedMb4 = np.subtract(data['macroblockStatus[3][4]'][1:], data['macroblockStatus[3][4]'][:-1])
+    dataMissingConcealedMb0 = np.subtract(data[lblMbStatus3_0][1:], data[lblMbStatus3_0][:-1])
+    dataMissingConcealedMb1 = np.subtract(data[lblMbStatus3_1][1:], data[lblMbStatus3_1][:-1])
+    dataMissingConcealedMb2 = np.subtract(data[lblMbStatus3_2][1:], data[lblMbStatus3_2][:-1])
+    dataMissingConcealedMb3 = np.subtract(data[lblMbStatus3_3][1:], data[lblMbStatus3_3][:-1])
+    dataMissingConcealedMb4 = np.subtract(data[lblMbStatus3_4][1:], data[lblMbStatus3_4][:-1])
     dataMissingConcealedMb = np.add(dataMissingConcealedMb0, np.add(dataMissingConcealedMb1, np.add(dataMissingConcealedMb2, np.add(dataMissingConcealedMb3, dataMissingConcealedMb4))))
-    dataMissingMb0 = np.subtract(data['macroblockStatus[4][0]'][1:], data['macroblockStatus[4][0]'][:-1])
-    dataMissingMb1 = np.subtract(data['macroblockStatus[4][1]'][1:], data['macroblockStatus[4][1]'][:-1])
-    dataMissingMb2 = np.subtract(data['macroblockStatus[4][2]'][1:], data['macroblockStatus[4][2]'][:-1])
-    dataMissingMb3 = np.subtract(data['macroblockStatus[4][3]'][1:], data['macroblockStatus[4][3]'][:-1])
-    dataMissingMb4 = np.subtract(data['macroblockStatus[4][4]'][1:], data['macroblockStatus[4][4]'][:-1])
+    dataMissingMb0 = np.subtract(data[lblMbStatus4_0][1:], data[lblMbStatus4_0][:-1])
+    dataMissingMb1 = np.subtract(data[lblMbStatus4_1][1:], data[lblMbStatus4_1][:-1])
+    dataMissingMb2 = np.subtract(data[lblMbStatus4_2][1:], data[lblMbStatus4_2][:-1])
+    dataMissingMb3 = np.subtract(data[lblMbStatus4_3][1:], data[lblMbStatus4_3][:-1])
+    dataMissingMb4 = np.subtract(data[lblMbStatus4_4][1:], data[lblMbStatus4_4][:-1])
     dataMissingMb = np.add(dataMissingMb0, np.add(dataMissingMb1, np.add(dataMissingMb2, np.add(dataMissingMb3, dataMissingMb4))))
-    dataErrorPropagationMb0 = np.subtract(data['macroblockStatus[5][0]'][1:], data['macroblockStatus[5][0]'][:-1])
-    dataErrorPropagationMb1 = np.subtract(data['macroblockStatus[5][1]'][1:], data['macroblockStatus[5][1]'][:-1])
-    dataErrorPropagationMb2 = np.subtract(data['macroblockStatus[5][2]'][1:], data['macroblockStatus[5][2]'][:-1])
-    dataErrorPropagationMb3 = np.subtract(data['macroblockStatus[5][3]'][1:], data['macroblockStatus[5][3]'][:-1])
-    dataErrorPropagationMb4 = np.subtract(data['macroblockStatus[5][4]'][1:], data['macroblockStatus[5][4]'][:-1])
+    dataErrorPropagationMb0 = np.subtract(data[lblMbStatus5_0][1:], data[lblMbStatus5_0][:-1])
+    dataErrorPropagationMb1 = np.subtract(data[lblMbStatus5_1][1:], data[lblMbStatus5_1][:-1])
+    dataErrorPropagationMb2 = np.subtract(data[lblMbStatus5_2][1:], data[lblMbStatus5_2][:-1])
+    dataErrorPropagationMb3 = np.subtract(data[lblMbStatus5_3][1:], data[lblMbStatus5_3][:-1])
+    dataErrorPropagationMb4 = np.subtract(data[lblMbStatus5_4][1:], data[lblMbStatus5_4][:-1])
     dataErrorPropagationMb = np.add(dataErrorPropagationMb0, np.add(dataErrorPropagationMb1, np.add(dataErrorPropagationMb2, np.add(dataErrorPropagationMb3, dataErrorPropagationMb4))))
     dataTotalMb = []
     for i, val in enumerate(data['timestamp']):
@@ -709,19 +794,30 @@ def simpleVideoStats(inFile, outFile):
         title = title.strip()
     else:
         title = inFile
+    if firstLine != '' and firstLine.find(',') != -1:
+        sep = ','
+    else:
+        sep = ' '
     plt.suptitle('Video stats (' + title + ')', fontsize=16, color='0.4')
 
-    data = pd.read_csv(inFile, sep=' ', comment='#', skip_blank_lines=True)
+    data = pd.read_csv(inFile, sep=sep, comment='#', skip_blank_lines=True)
 
 
-    # for compatibility with old stats files
+    # for compatibility with old stats files and files from telemetry blackbox
     if 'erroredSecondCount' in data.columns:
         lblEsr = 'erroredSecondCount'
-        lblEsrZ0 = 'erroredSecondCountByZone[0]'
-        lblEsrZ1 = 'erroredSecondCountByZone[1]'
-        lblEsrZ2 = 'erroredSecondCountByZone[2]'
-        lblEsrZ3 = 'erroredSecondCountByZone[3]'
-        lblEsrZ4 = 'erroredSecondCountByZone[4]'
+        if 'erroredSecondCountByZone[0]' in data.columns:
+            lblEsrZ0 = 'erroredSecondCountByZone[0]'
+            lblEsrZ1 = 'erroredSecondCountByZone[1]'
+            lblEsrZ2 = 'erroredSecondCountByZone[2]'
+            lblEsrZ3 = 'erroredSecondCountByZone[3]'
+            lblEsrZ4 = 'erroredSecondCountByZone[4]'
+        else:
+            lblEsrZ0 = 'erroredSecondCountByZone_0'
+            lblEsrZ1 = 'erroredSecondCountByZone_1'
+            lblEsrZ2 = 'erroredSecondCountByZone_2'
+            lblEsrZ3 = 'erroredSecondCountByZone_3'
+            lblEsrZ4 = 'erroredSecondCountByZone_4'
     else:
         lblEsr = 'errorSecondCount'
         lblEsrZ0 = 'errorSecondCountByZone[0]'
@@ -733,6 +829,68 @@ def simpleVideoStats(inFile, outFile):
         lblErroredOutputFrameCount = 'erroredOutputFrameCount'
     else:
         lblErroredOutputFrameCount = ''
+    if 'macroblockStatus[0][0]' in data.columns:
+        lblMbStatus0_0 = 'macroblockStatus[0][0]'
+        lblMbStatus0_1 = 'macroblockStatus[0][1]'
+        lblMbStatus0_2 = 'macroblockStatus[0][2]'
+        lblMbStatus0_3 = 'macroblockStatus[0][3]'
+        lblMbStatus0_4 = 'macroblockStatus[0][4]'
+        lblMbStatus1_0 = 'macroblockStatus[1][0]'
+        lblMbStatus1_1 = 'macroblockStatus[1][1]'
+        lblMbStatus1_2 = 'macroblockStatus[1][2]'
+        lblMbStatus1_3 = 'macroblockStatus[1][3]'
+        lblMbStatus1_4 = 'macroblockStatus[1][4]'
+        lblMbStatus2_0 = 'macroblockStatus[2][0]'
+        lblMbStatus2_1 = 'macroblockStatus[2][1]'
+        lblMbStatus2_2 = 'macroblockStatus[2][2]'
+        lblMbStatus2_3 = 'macroblockStatus[2][3]'
+        lblMbStatus2_4 = 'macroblockStatus[2][4]'
+        lblMbStatus3_0 = 'macroblockStatus[3][0]'
+        lblMbStatus3_1 = 'macroblockStatus[3][1]'
+        lblMbStatus3_2 = 'macroblockStatus[3][2]'
+        lblMbStatus3_3 = 'macroblockStatus[3][3]'
+        lblMbStatus3_4 = 'macroblockStatus[3][4]'
+        lblMbStatus4_0 = 'macroblockStatus[4][0]'
+        lblMbStatus4_1 = 'macroblockStatus[4][1]'
+        lblMbStatus4_2 = 'macroblockStatus[4][2]'
+        lblMbStatus4_3 = 'macroblockStatus[4][3]'
+        lblMbStatus4_4 = 'macroblockStatus[4][4]'
+        lblMbStatus5_0 = 'macroblockStatus[5][0]'
+        lblMbStatus5_1 = 'macroblockStatus[5][1]'
+        lblMbStatus5_2 = 'macroblockStatus[5][2]'
+        lblMbStatus5_3 = 'macroblockStatus[5][3]'
+        lblMbStatus5_4 = 'macroblockStatus[5][4]'
+    else:
+        lblMbStatus0_0 = 'macroblockStatus_0'
+        lblMbStatus0_1 = 'macroblockStatus_1'
+        lblMbStatus0_2 = 'macroblockStatus_2'
+        lblMbStatus0_3 = 'macroblockStatus_3'
+        lblMbStatus0_4 = 'macroblockStatus_4'
+        lblMbStatus1_0 = 'macroblockStatus_5'
+        lblMbStatus1_1 = 'macroblockStatus_6'
+        lblMbStatus1_2 = 'macroblockStatus_7'
+        lblMbStatus1_3 = 'macroblockStatus_8'
+        lblMbStatus1_4 = 'macroblockStatus_9'
+        lblMbStatus2_0 = 'macroblockStatus_10'
+        lblMbStatus2_1 = 'macroblockStatus_11'
+        lblMbStatus2_2 = 'macroblockStatus_12'
+        lblMbStatus2_3 = 'macroblockStatus_13'
+        lblMbStatus2_4 = 'macroblockStatus_14'
+        lblMbStatus3_0 = 'macroblockStatus_15'
+        lblMbStatus3_1 = 'macroblockStatus_16'
+        lblMbStatus3_2 = 'macroblockStatus_17'
+        lblMbStatus3_3 = 'macroblockStatus_18'
+        lblMbStatus3_4 = 'macroblockStatus_19'
+        lblMbStatus4_0 = 'macroblockStatus_20'
+        lblMbStatus4_1 = 'macroblockStatus_21'
+        lblMbStatus4_2 = 'macroblockStatus_22'
+        lblMbStatus4_3 = 'macroblockStatus_23'
+        lblMbStatus4_4 = 'macroblockStatus_24'
+        lblMbStatus5_0 = 'macroblockStatus_25'
+        lblMbStatus5_1 = 'macroblockStatus_26'
+        lblMbStatus5_2 = 'macroblockStatus_27'
+        lblMbStatus5_3 = 'macroblockStatus_28'
+        lblMbStatus5_4 = 'macroblockStatus_29'
 
 
     # data for summary
@@ -754,41 +912,41 @@ def simpleVideoStats(inFile, outFile):
     dataDiscardedFrameDelta = np.subtract(data['discardedFrameCount'][1:], data['discardedFrameCount'][:-1])
     dataMissedFrameDelta = np.subtract(np.subtract(data['missedFrameCount'][1:], data['missedFrameCount'][:-1]), dataDiscardedFrameDelta)
 
-    dataUnknownMb0 = np.subtract(data['macroblockStatus[0][0]'][1:], data['macroblockStatus[0][0]'][:-1])
-    dataUnknownMb1 = np.subtract(data['macroblockStatus[0][1]'][1:], data['macroblockStatus[0][1]'][:-1])
-    dataUnknownMb2 = np.subtract(data['macroblockStatus[0][2]'][1:], data['macroblockStatus[0][2]'][:-1])
-    dataUnknownMb3 = np.subtract(data['macroblockStatus[0][3]'][1:], data['macroblockStatus[0][3]'][:-1])
-    dataUnknownMb4 = np.subtract(data['macroblockStatus[0][4]'][1:], data['macroblockStatus[0][4]'][:-1])
+    dataUnknownMb0 = np.subtract(data[lblMbStatus0_0][1:], data[lblMbStatus0_0][:-1])
+    dataUnknownMb1 = np.subtract(data[lblMbStatus0_1][1:], data[lblMbStatus0_1][:-1])
+    dataUnknownMb2 = np.subtract(data[lblMbStatus0_2][1:], data[lblMbStatus0_2][:-1])
+    dataUnknownMb3 = np.subtract(data[lblMbStatus0_3][1:], data[lblMbStatus0_3][:-1])
+    dataUnknownMb4 = np.subtract(data[lblMbStatus0_4][1:], data[lblMbStatus0_4][:-1])
     dataUnknownMb = np.add(dataUnknownMb0, np.add(dataUnknownMb1, np.add(dataUnknownMb2, np.add(dataUnknownMb3, dataUnknownMb4))))
-    dataValidISliceMb0 = np.subtract(data['macroblockStatus[1][0]'][1:], data['macroblockStatus[1][0]'][:-1])
-    dataValidISliceMb1 = np.subtract(data['macroblockStatus[1][1]'][1:], data['macroblockStatus[1][1]'][:-1])
-    dataValidISliceMb2 = np.subtract(data['macroblockStatus[1][2]'][1:], data['macroblockStatus[1][2]'][:-1])
-    dataValidISliceMb3 = np.subtract(data['macroblockStatus[1][3]'][1:], data['macroblockStatus[1][3]'][:-1])
-    dataValidISliceMb4 = np.subtract(data['macroblockStatus[1][4]'][1:], data['macroblockStatus[1][4]'][:-1])
+    dataValidISliceMb0 = np.subtract(data[lblMbStatus1_0][1:], data[lblMbStatus1_0][:-1])
+    dataValidISliceMb1 = np.subtract(data[lblMbStatus1_1][1:], data[lblMbStatus1_1][:-1])
+    dataValidISliceMb2 = np.subtract(data[lblMbStatus1_2][1:], data[lblMbStatus1_2][:-1])
+    dataValidISliceMb3 = np.subtract(data[lblMbStatus1_3][1:], data[lblMbStatus1_3][:-1])
+    dataValidISliceMb4 = np.subtract(data[lblMbStatus1_4][1:], data[lblMbStatus1_4][:-1])
     dataValidISliceMb = np.add(dataValidISliceMb0, np.add(dataValidISliceMb1, np.add(dataValidISliceMb2, np.add(dataValidISliceMb3, dataValidISliceMb4))))
-    dataValidPSliceMb0 = np.subtract(data['macroblockStatus[2][0]'][1:], data['macroblockStatus[2][0]'][:-1])
-    dataValidPSliceMb1 = np.subtract(data['macroblockStatus[2][1]'][1:], data['macroblockStatus[2][1]'][:-1])
-    dataValidPSliceMb2 = np.subtract(data['macroblockStatus[2][2]'][1:], data['macroblockStatus[2][2]'][:-1])
-    dataValidPSliceMb3 = np.subtract(data['macroblockStatus[2][3]'][1:], data['macroblockStatus[2][3]'][:-1])
-    dataValidPSliceMb4 = np.subtract(data['macroblockStatus[2][4]'][1:], data['macroblockStatus[2][4]'][:-1])
+    dataValidPSliceMb0 = np.subtract(data[lblMbStatus2_0][1:], data[lblMbStatus2_0][:-1])
+    dataValidPSliceMb1 = np.subtract(data[lblMbStatus2_1][1:], data[lblMbStatus2_1][:-1])
+    dataValidPSliceMb2 = np.subtract(data[lblMbStatus2_2][1:], data[lblMbStatus2_2][:-1])
+    dataValidPSliceMb3 = np.subtract(data[lblMbStatus2_3][1:], data[lblMbStatus2_3][:-1])
+    dataValidPSliceMb4 = np.subtract(data[lblMbStatus2_4][1:], data[lblMbStatus2_4][:-1])
     dataValidPSliceMb = np.add(dataValidPSliceMb0, np.add(dataValidPSliceMb1, np.add(dataValidPSliceMb2, np.add(dataValidPSliceMb3, dataValidPSliceMb4))))
-    dataMissingConcealedMb0 = np.subtract(data['macroblockStatus[3][0]'][1:], data['macroblockStatus[3][0]'][:-1])
-    dataMissingConcealedMb1 = np.subtract(data['macroblockStatus[3][1]'][1:], data['macroblockStatus[3][1]'][:-1])
-    dataMissingConcealedMb2 = np.subtract(data['macroblockStatus[3][2]'][1:], data['macroblockStatus[3][2]'][:-1])
-    dataMissingConcealedMb3 = np.subtract(data['macroblockStatus[3][3]'][1:], data['macroblockStatus[3][3]'][:-1])
-    dataMissingConcealedMb4 = np.subtract(data['macroblockStatus[3][4]'][1:], data['macroblockStatus[3][4]'][:-1])
+    dataMissingConcealedMb0 = np.subtract(data[lblMbStatus3_0][1:], data[lblMbStatus3_0][:-1])
+    dataMissingConcealedMb1 = np.subtract(data[lblMbStatus3_1][1:], data[lblMbStatus3_1][:-1])
+    dataMissingConcealedMb2 = np.subtract(data[lblMbStatus3_2][1:], data[lblMbStatus3_2][:-1])
+    dataMissingConcealedMb3 = np.subtract(data[lblMbStatus3_3][1:], data[lblMbStatus3_3][:-1])
+    dataMissingConcealedMb4 = np.subtract(data[lblMbStatus3_4][1:], data[lblMbStatus3_4][:-1])
     dataMissingConcealedMb = np.add(dataMissingConcealedMb0, np.add(dataMissingConcealedMb1, np.add(dataMissingConcealedMb2, np.add(dataMissingConcealedMb3, dataMissingConcealedMb4))))
-    dataMissingMb0 = np.subtract(data['macroblockStatus[4][0]'][1:], data['macroblockStatus[4][0]'][:-1])
-    dataMissingMb1 = np.subtract(data['macroblockStatus[4][1]'][1:], data['macroblockStatus[4][1]'][:-1])
-    dataMissingMb2 = np.subtract(data['macroblockStatus[4][2]'][1:], data['macroblockStatus[4][2]'][:-1])
-    dataMissingMb3 = np.subtract(data['macroblockStatus[4][3]'][1:], data['macroblockStatus[4][3]'][:-1])
-    dataMissingMb4 = np.subtract(data['macroblockStatus[4][4]'][1:], data['macroblockStatus[4][4]'][:-1])
+    dataMissingMb0 = np.subtract(data[lblMbStatus4_0][1:], data[lblMbStatus4_0][:-1])
+    dataMissingMb1 = np.subtract(data[lblMbStatus4_1][1:], data[lblMbStatus4_1][:-1])
+    dataMissingMb2 = np.subtract(data[lblMbStatus4_2][1:], data[lblMbStatus4_2][:-1])
+    dataMissingMb3 = np.subtract(data[lblMbStatus4_3][1:], data[lblMbStatus4_3][:-1])
+    dataMissingMb4 = np.subtract(data[lblMbStatus4_4][1:], data[lblMbStatus4_4][:-1])
     dataMissingMb = np.add(dataMissingMb0, np.add(dataMissingMb1, np.add(dataMissingMb2, np.add(dataMissingMb3, dataMissingMb4))))
-    dataErrorPropagationMb0 = np.subtract(data['macroblockStatus[5][0]'][1:], data['macroblockStatus[5][0]'][:-1])
-    dataErrorPropagationMb1 = np.subtract(data['macroblockStatus[5][1]'][1:], data['macroblockStatus[5][1]'][:-1])
-    dataErrorPropagationMb2 = np.subtract(data['macroblockStatus[5][2]'][1:], data['macroblockStatus[5][2]'][:-1])
-    dataErrorPropagationMb3 = np.subtract(data['macroblockStatus[5][3]'][1:], data['macroblockStatus[5][3]'][:-1])
-    dataErrorPropagationMb4 = np.subtract(data['macroblockStatus[5][4]'][1:], data['macroblockStatus[5][4]'][:-1])
+    dataErrorPropagationMb0 = np.subtract(data[lblMbStatus5_0][1:], data[lblMbStatus5_0][:-1])
+    dataErrorPropagationMb1 = np.subtract(data[lblMbStatus5_1][1:], data[lblMbStatus5_1][:-1])
+    dataErrorPropagationMb2 = np.subtract(data[lblMbStatus5_2][1:], data[lblMbStatus5_2][:-1])
+    dataErrorPropagationMb3 = np.subtract(data[lblMbStatus5_3][1:], data[lblMbStatus5_3][:-1])
+    dataErrorPropagationMb4 = np.subtract(data[lblMbStatus5_4][1:], data[lblMbStatus5_4][:-1])
     dataErrorPropagationMb = np.add(dataErrorPropagationMb0, np.add(dataErrorPropagationMb1, np.add(dataErrorPropagationMb2, np.add(dataErrorPropagationMb3, dataErrorPropagationMb4))))
     dataTotalMb = []
     for i, val in enumerate(data['timestamp']):
@@ -1014,12 +1172,12 @@ def simpleVideoStats(inFile, outFile):
     #  Overall macroblocks  #
     #########################
 
-    overallUnknownMbCount = float(data['macroblockStatus[0][0]'].iat[-1] + data['macroblockStatus[0][1]'].iat[-1] + data['macroblockStatus[0][2]'].iat[-1] + data['macroblockStatus[0][3]'].iat[-1] + data['macroblockStatus[0][4]'].iat[-1])
-    overallValidISliceMbCount = float(data['macroblockStatus[1][0]'].iat[-1] + data['macroblockStatus[1][1]'].iat[-1] + data['macroblockStatus[1][2]'].iat[-1] + data['macroblockStatus[1][3]'].iat[-1] + data['macroblockStatus[1][4]'].iat[-1])
-    overallValidPSliceMbCount = float(data['macroblockStatus[2][0]'].iat[-1] + data['macroblockStatus[2][1]'].iat[-1] + data['macroblockStatus[2][2]'].iat[-1] + data['macroblockStatus[2][3]'].iat[-1] + data['macroblockStatus[2][4]'].iat[-1])
-    overallMissingConcealedMbCount = float(data['macroblockStatus[3][0]'].iat[-1] + data['macroblockStatus[3][1]'].iat[-1] + data['macroblockStatus[3][2]'].iat[-1] + data['macroblockStatus[3][3]'].iat[-1] + data['macroblockStatus[3][4]'].iat[-1])
-    overallMissingMbCount = float(data['macroblockStatus[4][0]'].iat[-1] + data['macroblockStatus[4][1]'].iat[-1] + data['macroblockStatus[4][2]'].iat[-1] + data['macroblockStatus[4][3]'].iat[-1] + data['macroblockStatus[4][4]'].iat[-1])
-    overallErrorPropagationMbCount = float(data['macroblockStatus[5][0]'].iat[-1] + data['macroblockStatus[5][1]'].iat[-1] + data['macroblockStatus[5][2]'].iat[-1] + data['macroblockStatus[5][3]'].iat[-1] + data['macroblockStatus[5][4]'].iat[-1])
+    overallUnknownMbCount = float(data[lblMbStatus0_0].iat[-1] + data[lblMbStatus0_1].iat[-1] + data[lblMbStatus0_2].iat[-1] + data[lblMbStatus0_3].iat[-1] + data[lblMbStatus0_4].iat[-1])
+    overallValidISliceMbCount = float(data[lblMbStatus1_0].iat[-1] + data[lblMbStatus1_1].iat[-1] + data[lblMbStatus1_2].iat[-1] + data[lblMbStatus1_3].iat[-1] + data[lblMbStatus1_4].iat[-1])
+    overallValidPSliceMbCount = float(data[lblMbStatus2_0].iat[-1] + data[lblMbStatus2_1].iat[-1] + data[lblMbStatus2_2].iat[-1] + data[lblMbStatus2_3].iat[-1] + data[lblMbStatus2_4].iat[-1])
+    overallMissingConcealedMbCount = float(data[lblMbStatus3_0].iat[-1] + data[lblMbStatus3_1].iat[-1] + data[lblMbStatus3_2].iat[-1] + data[lblMbStatus3_3].iat[-1] + data[lblMbStatus3_4].iat[-1])
+    overallMissingMbCount = float(data[lblMbStatus4_0].iat[-1] + data[lblMbStatus4_1].iat[-1] + data[lblMbStatus4_2].iat[-1] + data[lblMbStatus4_3].iat[-1] + data[lblMbStatus4_4].iat[-1])
+    overallErrorPropagationMbCount = float(data[lblMbStatus5_0].iat[-1] + data[lblMbStatus5_1].iat[-1] + data[lblMbStatus5_2].iat[-1] + data[lblMbStatus5_3].iat[-1] + data[lblMbStatus5_4].iat[-1])
     overallValidTotalMbCount = overallValidISliceMbCount + overallValidPSliceMbCount
     overallInvalidTotalMbCount = overallUnknownMbCount + overallMissingConcealedMbCount + overallMissingMbCount + overallErrorPropagationMbCount
     overallTotalMbCount = overallValidTotalMbCount + overallInvalidTotalMbCount
