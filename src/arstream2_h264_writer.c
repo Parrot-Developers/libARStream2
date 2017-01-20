@@ -1648,6 +1648,13 @@ eARSTREAM2_ERROR ARSTREAM2_H264Writer_RewriteNonRefPSliceNalu(ARSTREAM2_H264Writ
     *(pDst++) = dst;
     bitsWritten += 8;
 
+    if (pDst[-1] == 0x00)
+    {
+        /* If the last byte was 0x80, after the shift the rbsp_stop_one_bit is on the previous byte
+         * and we should not output a useless 0x00 byte => drop the last 0x00 byte */
+        bitsWritten -= 8;
+    }
+
     *outputSize = bitsWritten / 8;
 
     return ARSTREAM2_OK;
