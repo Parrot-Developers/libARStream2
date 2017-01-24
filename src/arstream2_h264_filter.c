@@ -639,26 +639,43 @@ int ARSTREAM2_H264Filter_ProcessAu(ARSTREAM2_H264Filter_t *filter, ARSTREAM2_H26
                 }
             }
         }
-        /* count all frames (totally missing non-ref frames are not counted) */
-        filter->stats.totalFrameCount++;
-        if (ret == 1)
+        if (filter->currentAuSlicesReceived)
         {
-            /* count all output frames (including non-ref frames) */
-            filter->stats.outputFrameCount++;
-            if (hasErrors)
+            /* Count all frames for which at least 1 slice has been received
+             * (missing ref frames for which no slice has been received will
+             * be counted by the gap in frame_num on the next frame).
+             *
+             * Totally missing non-ref frames are never counted because there
+             * is no way of knowing of their existence (their frame_num is the
+             * same as the next ref frame).
+             *
+             * Non-ref frames that are discarded are not counted as discarded/missed
+             * frames. Therefore, totalFrameCount = outputFrameCount
+             *                                    + missedFrameCount
+             *                                    + (missedNonRefFrameCount)
+             *
+             * discardedFrameCount is included in missedFrameCount.
+             */
+            filter->stats.totalFrameCount++;
+            if (ret == 1)
             {
-                filter->stats.erroredOutputFrameCount++;
+                /* count all output frames (including non-ref frames) */
+                filter->stats.outputFrameCount++;
+                if (hasErrors)
+                {
+                    filter->stats.erroredOutputFrameCount++;
+                }
             }
-        }
-        if (discarded)
-        {
-            /* count discarded frames (including partial missing non-ref frames) */
-            filter->stats.discardedFrameCount++;
-        }
-        if (((discarded) || (ret != 1)) && (filter->currentAuIsRef))
-        {
-            /* count missed frames (missing non-ref frames are not counted as missing) */
-            filter->stats.missedFrameCount++;
+            if ((discarded) && (filter->currentAuIsRef))
+            {
+                /* count discarded frames (discarded non-ref frames are not counted) */
+                filter->stats.discardedFrameCount++;
+            }
+            if (((discarded) || (ret != 1)) && (filter->currentAuIsRef))
+            {
+                /* count missed frames (missing non-ref frames are not counted) */
+                filter->stats.missedFrameCount++;
+            }
         }
         if (filter->currentAuIsRef)
         {
