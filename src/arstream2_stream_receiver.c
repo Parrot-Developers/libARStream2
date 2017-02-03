@@ -41,6 +41,7 @@
 
 #define ARSTREAM2_STREAM_RECEIVER_VIDEO_STATS_RTCP_SEND_INTERVAL (1000000)
 #define ARSTREAM2_STREAM_RECEIVER_LOSS_REPORT_RTCP_SEND_INTERVAL (500000)
+#define ARSTREAM2_STREAM_RECEIVER_DJB_REPORT_RTCP_SEND_INTERVAL (1000000)
 #define ARSTREAM2_STREAM_RECEIVER_UNTIMED_METADATA_DEFAULT_SEND_INTERVAL (5000000)
 
 
@@ -417,6 +418,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
         receiverConfig.generateReceiverReports = config->generateReceiverReports;
         receiverConfig.videoStatsSendTimeInterval = ARSTREAM2_STREAM_RECEIVER_VIDEO_STATS_RTCP_SEND_INTERVAL;
         receiverConfig.lossReportSendTimeInterval = ARSTREAM2_STREAM_RECEIVER_LOSS_REPORT_RTCP_SEND_INTERVAL;
+        receiverConfig.djbReportSendTimeInterval = ARSTREAM2_STREAM_RECEIVER_DJB_REPORT_RTCP_SEND_INTERVAL;
 
         if (usemux) {
             receiver_mux_config.mux = mux_config->mux;

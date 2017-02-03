@@ -805,19 +805,21 @@ int ARSTREAM2_RTCP_LossReportSet(ARSTREAM2_RTCP_LossReportContext_t *context, ui
 }
 
 
-int ARSTREAM2_RTCP_GenerateExtendedReport(ARSTREAM2_RTCP_ExtendedReport_t *xr, ARSTREAM2_RTCP_LossRleReportBlock_t *lossRle,
+int ARSTREAM2_RTCP_GenerateExtendedReport(ARSTREAM2_RTCP_ExtendedReport_t *xr,
                                           unsigned int maxSize, uint64_t sendTimestamp, uint32_t receiverSsrc, uint32_t senderSsrc,
-                                          ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx, unsigned int *size)
+                                          ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx,
+                                          ARSTREAM2_RTCP_DjbReportContext_t *djbReportCtx,
+                                          unsigned int *size)
 {
     unsigned int _size = 0, chunkCount = 0;
 
-    if (!lossReportCtx)
+    if (!xr)
     {
         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid pointer");
         return -1;
     }
 
-    if (!lossRle)
+    if ((!lossReportCtx) && (!djbReportCtx))
     {
         /* Nothing to do */
         if (size)
@@ -837,8 +839,39 @@ int ARSTREAM2_RTCP_GenerateExtendedReport(ARSTREAM2_RTCP_ExtendedReport_t *xr, A
     xr->packetType = ARSTREAM2_RTCP_EXTENDED_REPORT_PACKET_TYPE;
     xr->ssrc = htonl(receiverSsrc);
 
-    if (lossRle)
+    if (djbReportCtx)
     {
+        ARSTREAM2_RTCP_DjbMetricsReportBlock_t *djbReport = (ARSTREAM2_RTCP_DjbMetricsReportBlock_t*)((uint8_t*)xr + _size);
+
+        _size += sizeof(ARSTREAM2_RTCP_DjbMetricsReportBlock_t);
+        if (_size > maxSize)
+        {
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+            return -1;
+        }
+
+        djbReport->blockType = ARSTREAM2_RTCP_DJB_METRICS_REPORT_BLOCK_TYPE;
+        djbReport->flags = 0x60; // I = 01 (sampled value), C = 1 (adaptive de-jitter buffer)
+        djbReport->length = htons(sizeof(ARSTREAM2_RTCP_DjbMetricsReportBlock_t) / 4 - 1);
+        djbReport->ssrc = htonl(senderSsrc);
+        djbReport->djbNominal = (djbReportCtx->djbMetricsAvailable)
+                ? ((djbReportCtx->djbNominal <= 0xFFFD) ? htons((uint16_t)djbReportCtx->djbNominal) : htons(0xFFFE))
+                : htons(0xFFFF);
+        djbReport->djbMax = (djbReportCtx->djbMetricsAvailable)
+                ? ((djbReportCtx->djbMax <= 0xFFFD) ? htons((uint16_t)djbReportCtx->djbMax) : htons(0xFFFE))
+                : htons(0xFFFF);
+        djbReport->djbHighWatermark = (djbReportCtx->djbMetricsAvailable)
+                ? ((djbReportCtx->djbHighWatermark <= 0xFFFD) ? htons((uint16_t)djbReportCtx->djbHighWatermark) : htons(0xFFFE))
+                : htons(0xFFFF);
+        djbReport->djbLowWatermark = (djbReportCtx->djbMetricsAvailable)
+                ? ((djbReportCtx->djbLowWatermark <= 0xFFFD) ? htons((uint16_t)djbReportCtx->djbLowWatermark) : htons(0xFFFE))
+                : htons(0xFFFF);
+    }
+
+    if (lossReportCtx)
+    {
+        ARSTREAM2_RTCP_LossRleReportBlock_t *lossRle = (ARSTREAM2_RTCP_LossRleReportBlock_t*)((uint8_t*)xr + _size);
+
         _size += sizeof(ARSTREAM2_RTCP_LossRleReportBlock_t);
         if (_size > maxSize)
         {
@@ -983,7 +1016,9 @@ int ARSTREAM2_RTCP_GenerateExtendedReport(ARSTREAM2_RTCP_ExtendedReport_t *xr, A
 
 int ARSTREAM2_RTCP_ProcessExtendedReport(const uint8_t *buffer, unsigned int bufferSize,
                                          uint64_t receptionTimestamp, uint32_t receiverSsrc, uint32_t senderSsrc,
-                                         ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx, int *gotLossReport)
+                                         ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx,
+                                         ARSTREAM2_RTCP_DjbReportContext_t *djbReportCtx,
+                                         int *gotLossReport, int *gotDjbReport)
 {
     const ARSTREAM2_RTCP_ExtendedReport_t *xr = (const ARSTREAM2_RTCP_ExtendedReport_t*)buffer;
     int ret = 0;
@@ -993,7 +1028,7 @@ int ARSTREAM2_RTCP_ProcessExtendedReport(const uint8_t *buffer, unsigned int buf
         *gotLossReport = 0;
     }
 
-    if ((!buffer) || (!lossReportCtx))
+    if ((!buffer) || (!lossReportCtx) || (!djbReportCtx))
     {
         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid pointer");
         return -1;
@@ -1180,6 +1215,58 @@ int ARSTREAM2_RTCP_ProcessExtendedReport(const uint8_t *buffer, unsigned int buf
             if (gotLossReport)
             {
                 *gotLossReport = 1;
+            }
+        }
+        else if (*(buffer + processedLen * 4 + 4) == ARSTREAM2_RTCP_DJB_METRICS_REPORT_BLOCK_TYPE)
+        {
+            const ARSTREAM2_RTCP_DjbMetricsReportBlock_t *djbReport = (const ARSTREAM2_RTCP_DjbMetricsReportBlock_t*)(buffer + processedLen * 4 + 4);
+
+            if (bufferSize - (processedLen * 4 + 4) < sizeof(ARSTREAM2_RTCP_DjbMetricsReportBlock_t))
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid buffer size");
+                ret = -1;
+                break;
+            }
+
+            uint32_t ssrc2 = ntohl(djbReport->ssrc);
+            if (ssrc2 != senderSsrc)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTCP_TAG, "Unexpected sender SSRC");
+                ret = -1;
+                break;
+            }
+
+            uint16_t blockLen = ntohs(djbReport->length);
+            if ((unsigned int)blockLen * 4 + 4 > bufferSize - (processedLen * 4 + 4))
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid length (%d -> %d bytes) for %d bytes remaining buffer size", blockLen, (unsigned int)blockLen * 4 + 4, bufferSize - (processedLen * 4 + 4));
+                ret = -1;
+                break;
+            }
+            if (blockLen < sizeof(ARSTREAM2_RTCP_DjbMetricsReportBlock_t) / 4 - 1)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid DJB report block length (%d)", blockLen);
+                ret = -1;
+                break;
+            }
+
+            djbReportCtx->djbNominal = ntohs(djbReport->djbNominal);
+            djbReportCtx->djbMax = ntohs(djbReport->djbMax);
+            djbReportCtx->djbHighWatermark = ntohs(djbReport->djbHighWatermark);
+            djbReportCtx->djbLowWatermark = ntohs(djbReport->djbLowWatermark);
+            if ((djbReport->djbNominal == 0xFFFF) && (djbReport->djbMax == 0xFFFF) && (djbReport->djbHighWatermark == 0xFFFF) && (djbReport->djbLowWatermark == 0xFFFF))
+            {
+                djbReportCtx->djbMetricsAvailable = 0;
+            }
+            else
+            {
+                djbReportCtx->djbMetricsAvailable = 1;
+            }
+
+            djbReportCtx->lastReceptionTimestamp = receptionTimestamp;
+            if (gotDjbReport)
+            {
+                *gotDjbReport = 1;
             }
         }
         processedLen += ntohs(*((uint16_t*)(buffer + processedLen * 4 + 4 + 2))) + 1;
@@ -1769,7 +1856,7 @@ int ARSTREAM2_RTCP_Sender_GenerateCompoundPacket(uint8_t *packet, unsigned int m
 int ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(uint8_t *packet, unsigned int maxPacketSize,
                                                    uint64_t sendTimestamp, int generateReceiverReport,
                                                    int generateSourceDescription, int generateApplicationClockDelta,
-                                                   int generateApplicationVideoStats, int generateLossReport,
+                                                   int generateApplicationVideoStats, int generateLossReport, int generateDjbReport,
                                                    ARSTREAM2_RTCP_ReceiverContext_t *context, unsigned int *size)
 {
     int ret = 0;
@@ -1803,13 +1890,13 @@ int ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(uint8_t *packet, unsigned int
         }
     }
 
-    if ((ret == 0) && (generateLossReport))
+    if ((ret == 0) && ((generateLossReport) || (generateDjbReport)))
     {
         unsigned int extendedReportSize = 0;
         ret = ARSTREAM2_RTCP_GenerateExtendedReport((ARSTREAM2_RTCP_ExtendedReport_t*)(packet + totalSize),
-                                                    (ARSTREAM2_RTCP_LossRleReportBlock_t*)(packet + totalSize + sizeof(ARSTREAM2_RTCP_ExtendedReport_t)),
                                                     maxPacketSize - totalSize, sendTimestamp, context->receiverSsrc, context->senderSsrc,
-                                                    &context->lossReportCtx, &extendedReportSize);
+                                                    (generateLossReport) ? &context->lossReportCtx : NULL,
+                                                    (generateDjbReport) ? &context->djbReportCtx : NULL, &extendedReportSize);
         if (ret != 0)
         {
             ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Failed to generate extended report (%d)", ret);
@@ -1880,7 +1967,8 @@ int ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(uint8_t *packet, unsigned int
 int ARSTREAM2_RTCP_Sender_ProcessCompoundPacket(const uint8_t *buffer, unsigned int bufferSize,
                                                 uint64_t receptionTimestamp,
                                                 ARSTREAM2_RTCP_SenderContext_t *context,
-                                                int *gotReceptionReport, int *gotVideoStats, int *gotLossReport)
+                                                int *gotReceptionReport, int *gotVideoStats,
+                                                int *gotLossReport, int *gotDjbReport)
 {
     unsigned int readSize = 0, size = 0;
     int receptionReportCount = 0, type, subType, ret, _ret = 0;
@@ -1922,7 +2010,9 @@ int ARSTREAM2_RTCP_Sender_ProcessCompoundPacket(const uint8_t *buffer, unsigned 
                 break;
             case ARSTREAM2_RTCP_EXTENDED_REPORT_PACKET_TYPE:
                 ret = ARSTREAM2_RTCP_ProcessExtendedReport(buffer, bufferSize - readSize, receptionTimestamp,
-                                                           context->receiverSsrc, context->senderSsrc, &context->lossReportCtx, gotLossReport);
+                                                           context->receiverSsrc, context->senderSsrc,
+                                                           &context->lossReportCtx, &context->djbReportCtx,
+                                                           gotLossReport, gotDjbReport);
                 if (ret != 0)
                 {
                     ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Failed to process extended report (%d)", ret);
