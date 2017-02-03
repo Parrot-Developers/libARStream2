@@ -1210,7 +1210,7 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
                 sender->videoStatsCallback(&sender->rtcpSenderContext.videoStatsCtx.videoStats, sender->videoStatsCallbackUserPtr);
             }
 
-            if (((gotReceptionReport) || (gotLossReport)) && (sender->rtpStatsCallback != NULL))
+            if (((gotReceptionReport) || (gotLossReport) || (gotDjbReport)) && (sender->rtpStatsCallback != NULL))
             {
                 ARSTREAM2_RTP_RtpStats_t rtpStats;
 
@@ -1234,6 +1234,14 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
                     rtpStats.lossReport.startSeqNum = (uint16_t)(sender->rtcpSenderContext.lossReportCtx.startSeqNum & 0xFFFF);
                     rtpStats.lossReport.endSeqNum = (uint16_t)(sender->rtcpSenderContext.lossReportCtx.endSeqNum & 0xFFFF);
                     rtpStats.lossReport.receivedFlag = sender->rtcpSenderContext.lossReportCtx.receivedFlag;
+                }
+                if (sender->rtcpSenderContext.djbReportCtx.djbMetricsAvailable)
+                {
+                    rtpStats.djbMetricsReport.timestamp = sender->rtcpSenderContext.djbReportCtx.lastReceptionTimestamp;
+                    rtpStats.djbMetricsReport.djbNominal = sender->rtcpSenderContext.djbReportCtx.djbNominal;
+                    rtpStats.djbMetricsReport.djbMax = sender->rtcpSenderContext.djbReportCtx.djbMax;
+                    rtpStats.djbMetricsReport.djbHighWatermark = sender->rtcpSenderContext.djbReportCtx.djbHighWatermark;
+                    rtpStats.djbMetricsReport.djbLowWatermark = sender->rtcpSenderContext.djbReportCtx.djbLowWatermark;
                 }
                 rtpStats.clockDelta.peerClockDelta = sender->rtcpSenderContext.clockDeltaCtx.clockDeltaAvg;
                 rtpStats.clockDelta.roundTripDelay = (uint32_t)sender->rtcpSenderContext.clockDeltaCtx.rtDelayAvg;

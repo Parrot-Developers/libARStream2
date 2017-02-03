@@ -89,6 +89,13 @@ typedef struct ARSTREAM2_RTP_RtpStats_s
         uint32_t *receivedFlag;
     } lossReport;
     struct {
+        uint64_t timestamp;
+        uint32_t djbNominal;
+        uint32_t djbMax;
+        uint32_t djbHighWatermark;
+        uint32_t djbLowWatermark;
+    } djbMetricsReport;
+    struct {
         int64_t peerClockDelta;
         uint32_t roundTripDelay;
         uint32_t peer2meDelay;

@@ -204,6 +204,7 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
         fprintf(context->outputFile, "timestamp rssi senderPacketCount senderByteCount");
         fprintf(context->outputFile, " senderReportTimestamp senderReportLastInterval senderReportIntervalPacketCount senderReportIntervalByteCount");
         fprintf(context->outputFile, " receiverReportTimestamp receiverReportRoundTripDelay receiverReportInterarrivalJitter receiverReportReceiverLostCount receiverReportReceiverFractionLost receiverReportReceiverExtHighestSeqNum");
+        fprintf(context->outputFile, " djbMetricsReportTimestamp djbMetricsReportDjbNominal djbMetricsReportDjbMax djbMetricsReportDjbHighWatermark djbMetricsReportDjbLowWatermark");
         fprintf(context->outputFile, " peerClockDelta clockDeltaRoundTripDelay clockDeltaPeer2meDelay clockDeltaMe2peerDelay");
         fprintf(context->outputFile, "\n");
         context->fileOutputTimestamp = 0;
@@ -264,6 +265,18 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
                         (long unsigned int)0, (long unsigned int)0,
                         (long unsigned int)0, (long unsigned int)0,
                         (long unsigned int)0);
+            }
+            if (rtpStats->djbMetricsReport.timestamp)
+            {
+                fprintf(context->outputFile, " %llu %lu %lu %lu %lu", (long long unsigned int)rtpStats->djbMetricsReport.timestamp,
+                        (long unsigned int)rtpStats->djbMetricsReport.djbNominal, (long unsigned int)rtpStats->djbMetricsReport.djbMax,
+                        (long unsigned int)rtpStats->djbMetricsReport.djbHighWatermark, (long unsigned int)rtpStats->djbMetricsReport.djbLowWatermark);
+            }
+            else
+            {
+                fprintf(context->outputFile, " %llu %lu %lu %lu %lu", (long long unsigned int)0,
+                        (long unsigned int)0, (long unsigned int)0,
+                        (long unsigned int)0, (long unsigned int)0);
             }
             fprintf(context->outputFile, " %lld %lu %lu %lu",
                     (long long int)rtpStats->clockDelta.peerClockDelta, (long unsigned int)rtpStats->clockDelta.roundTripDelay,
