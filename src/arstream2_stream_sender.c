@@ -1440,20 +1440,41 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
             memset(&rtpsOut, 0, sizeof(ARSTREAM2_StreamStats_RtpStats_t));
 
             /* Map the RTP stats */
-            rtpsOut.timestamp = rtpStats->receiverReport.timestamp;
             rtpsOut.rssi = streamSender->lastKnownRssi;
-            rtpsOut.roundTripDelay = rtpStats->receiverReport.roundTripDelay;
-            rtpsOut.interarrivalJitter = rtpStats->receiverReport.interarrivalJitter;
-            rtpsOut.receiverLostCount = rtpStats->receiverReport.receiverLostCount;
-            rtpsOut.receiverFractionLost = rtpStats->receiverReport.receiverFractionLost;
-            rtpsOut.receiverExtHighestSeqNum = rtpStats->receiverReport.receiverExtHighestSeqNum;
-            rtpsOut.lastSenderReportInterval = rtpStats->senderReport.lastInterval;
-            rtpsOut.senderReportIntervalPacketCount = rtpStats->senderReport.intervalPacketCount;
-            rtpsOut.senderReportIntervalByteCount = rtpStats->senderReport.intervalByteCount;
-            rtpsOut.senderPacketCount = rtpStats->senderStats.sentPacketCount;
-            rtpsOut.senderByteCount = rtpStats->senderStats.sentByteIntegral;
-            rtpsOut.peerClockDelta = rtpStats->clockDelta.peerClockDelta;
-            rtpsOut.roundTripDelayFromClockDelta = rtpStats->clockDelta.roundTripDelay;
+            rtpsOut.senderStats.timestamp = rtpStats->senderStats.timestamp;
+            rtpsOut.senderStats.sentPacketCount = rtpStats->senderStats.sentPacketCount;
+            rtpsOut.senderStats.droppedPacketCount = rtpStats->senderStats.droppedPacketCount;
+            rtpsOut.senderStats.sentByteIntegral = rtpStats->senderStats.sentByteIntegral;
+            rtpsOut.senderStats.sentByteIntegralSq = rtpStats->senderStats.sentByteIntegralSq;
+            rtpsOut.senderStats.droppedByteIntegral = rtpStats->senderStats.droppedByteIntegral;
+            rtpsOut.senderStats.droppedByteIntegralSq = rtpStats->senderStats.droppedByteIntegralSq;
+            rtpsOut.senderStats.inputToSentTimeIntegral = rtpStats->senderStats.inputToSentTimeIntegral;
+            rtpsOut.senderStats.inputToSentTimeIntegralSq = rtpStats->senderStats.inputToSentTimeIntegralSq;
+            rtpsOut.senderStats.inputToDroppedTimeIntegral = rtpStats->senderStats.inputToDroppedTimeIntegral;
+            rtpsOut.senderStats.inputToDroppedTimeIntegralSq = rtpStats->senderStats.inputToDroppedTimeIntegralSq;
+            rtpsOut.senderReport.timestamp = rtpStats->senderReport.timestamp;
+            rtpsOut.senderReport.lastInterval = rtpStats->senderReport.lastInterval;
+            rtpsOut.senderReport.intervalPacketCount = rtpStats->senderReport.intervalPacketCount;
+            rtpsOut.senderReport.intervalByteCount = rtpStats->senderReport.intervalByteCount;
+            rtpsOut.receiverReport.timestamp = rtpStats->receiverReport.timestamp;
+            rtpsOut.receiverReport.roundTripDelay = rtpStats->receiverReport.roundTripDelay;
+            rtpsOut.receiverReport.interarrivalJitter = rtpStats->receiverReport.interarrivalJitter;
+            rtpsOut.receiverReport.receiverLostCount = rtpStats->receiverReport.receiverLostCount;
+            rtpsOut.receiverReport.receiverFractionLost = rtpStats->receiverReport.receiverFractionLost;
+            rtpsOut.receiverReport.receiverExtHighestSeqNum = rtpStats->receiverReport.receiverExtHighestSeqNum;
+            rtpsOut.lossReport.timestamp = rtpStats->lossReport.timestamp;
+            rtpsOut.lossReport.startSeqNum = rtpStats->lossReport.startSeqNum;
+            rtpsOut.lossReport.endSeqNum = rtpStats->lossReport.endSeqNum;
+            rtpsOut.lossReport.receivedFlag = rtpStats->lossReport.receivedFlag;
+            rtpsOut.djbMetricsReport.timestamp = rtpStats->djbMetricsReport.timestamp;
+            rtpsOut.djbMetricsReport.djbNominal = rtpStats->djbMetricsReport.djbNominal;
+            rtpsOut.djbMetricsReport.djbMax = rtpStats->djbMetricsReport.djbMax;
+            rtpsOut.djbMetricsReport.djbHighWatermark = rtpStats->djbMetricsReport.djbHighWatermark;
+            rtpsOut.djbMetricsReport.djbLowWatermark = rtpStats->djbMetricsReport.djbLowWatermark;
+            rtpsOut.clockDelta.peerClockDelta = rtpStats->clockDelta.peerClockDelta;
+            rtpsOut.clockDelta.roundTripDelay = rtpStats->clockDelta.roundTripDelay;
+            rtpsOut.clockDelta.peer2meDelay = rtpStats->clockDelta.peer2meDelay;
+            rtpsOut.clockDelta.me2peerDelay = rtpStats->clockDelta.me2peerDelay;
 
             /* Call the receiver report callback function */
             streamSender->rtpStatsCallback(&rtpsOut, streamSender->rtpStatsCallbackUserPtr);
