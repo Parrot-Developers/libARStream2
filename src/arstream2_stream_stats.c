@@ -167,6 +167,11 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
         return;
     }
 
+    memset(&context->rtpStatsCumulated, 0, sizeof(ARSTREAM2_RTP_RtpStats_t));
+    context->senderReportCumulatedCount = 0;
+    context->receiverReportCumulatedCount = 0;
+    context->djbMetricsReportCumulatedCount = 0;
+
     if ((debugPath) && (strlen(debugPath)))
     {
         snprintf(szOutputFileName, sizeof(szOutputFileName), "%s/%s/%s_%s.%s", debugPath,
@@ -231,17 +236,41 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
         return;
     }
 
-    if ((context->outputFile) && (rtpStats->receiverReport.timestamp != 0))
+    /* cumulated values (mean values across the output interval) */
+    if (rtpStats->senderReport.timestamp != 0)
     {
-        if (context->fileOutputTimestamp == 0)
-        {
-            /* init */
-            context->fileOutputTimestamp = curTime;
-        }
-        if (curTime >= context->fileOutputTimestamp + ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_INTERVAL)
+        context->rtpStatsCumulated.senderReport.lastInterval += rtpStats->senderReport.lastInterval;
+        context->rtpStatsCumulated.senderReport.intervalPacketCount += rtpStats->senderReport.intervalPacketCount;
+        context->rtpStatsCumulated.senderReport.intervalByteCount += rtpStats->senderReport.intervalByteCount;
+        context->senderReportCumulatedCount++;
+    }
+    if (rtpStats->receiverReport.timestamp != 0)
+    {
+        context->rtpStatsCumulated.receiverReport.roundTripDelay += rtpStats->receiverReport.roundTripDelay;
+        context->rtpStatsCumulated.receiverReport.interarrivalJitter += rtpStats->receiverReport.interarrivalJitter;
+        context->rtpStatsCumulated.receiverReport.receiverFractionLost += rtpStats->receiverReport.receiverFractionLost;
+        context->receiverReportCumulatedCount++;
+    }
+    if (rtpStats->djbMetricsReport.timestamp != 0)
+    {
+        context->rtpStatsCumulated.djbMetricsReport.djbNominal += rtpStats->djbMetricsReport.djbNominal;
+        context->rtpStatsCumulated.djbMetricsReport.djbMax += rtpStats->djbMetricsReport.djbMax;
+        context->rtpStatsCumulated.djbMetricsReport.djbHighWatermark += rtpStats->djbMetricsReport.djbHighWatermark;
+        context->rtpStatsCumulated.djbMetricsReport.djbLowWatermark += rtpStats->djbMetricsReport.djbLowWatermark;
+        context->djbMetricsReportCumulatedCount++;
+    }
+
+    if (context->fileOutputTimestamp == 0)
+    {
+        /* init */
+        context->fileOutputTimestamp = curTime;
+    }
+    if (curTime >= context->fileOutputTimestamp + ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_INTERVAL)
+    {
+        if (context->outputFile)
         {
             fprintf(context->outputFile, "%i", rtpStats->rssi);
-            if (rtpStats->senderReport.timestamp)
+            if (rtpStats->senderStats.timestamp != 0)
             {
                 fprintf(context->outputFile, " %llu %lu %lu %llu %llu %llu %llu %llu %llu %llu %llu", (long long unsigned int)rtpStats->senderStats.timestamp,
                         (long unsigned int)rtpStats->senderStats.sentPacketCount, (long unsigned int)rtpStats->senderStats.droppedPacketCount,
@@ -259,23 +288,25 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
                         (long long unsigned int)0, (long long unsigned int)0,
                         (long long unsigned int)0, (long long unsigned int)0);
             }
-            if (rtpStats->senderReport.timestamp)
+            if ((rtpStats->senderReport.timestamp != 0) && (context->senderReportCumulatedCount > 0))
             {
                 fprintf(context->outputFile, " %llu %lu %lu %lu", (long long unsigned int)rtpStats->senderReport.timestamp,
-                        (long unsigned int)rtpStats->senderReport.lastInterval, (long unsigned int)rtpStats->senderReport.intervalPacketCount,
-                        (long unsigned int)rtpStats->senderReport.intervalByteCount);
+                        (long unsigned int)context->rtpStatsCumulated.senderReport.lastInterval / context->senderReportCumulatedCount,
+                        (long unsigned int)context->rtpStatsCumulated.senderReport.intervalPacketCount / context->senderReportCumulatedCount,
+                        (long unsigned int)context->rtpStatsCumulated.senderReport.intervalByteCount / context->senderReportCumulatedCount);
             }
             else
             {
                 fprintf(context->outputFile, " %llu %lu %lu %lu", (long long unsigned int)0,
-                        (long unsigned int)0, (long unsigned int)0,
-                        (long unsigned int)0);
+                        (long unsigned int)0, (long unsigned int)0, (long unsigned int)0);
             }
-            if (rtpStats->receiverReport.timestamp != 0)
+            if ((rtpStats->receiverReport.timestamp != 0) && (context->receiverReportCumulatedCount > 0))
             {
                 fprintf(context->outputFile, " %llu %lu %lu %lu %lu %lu", (long long unsigned int)rtpStats->receiverReport.timestamp,
-                        (long unsigned int)rtpStats->receiverReport.roundTripDelay, (long unsigned int)rtpStats->receiverReport.interarrivalJitter,
-                        (long unsigned int)rtpStats->receiverReport.receiverLostCount, (long unsigned int)rtpStats->receiverReport.receiverFractionLost,
+                        (long unsigned int)context->rtpStatsCumulated.receiverReport.roundTripDelay / context->receiverReportCumulatedCount,
+                        (long unsigned int)context->rtpStatsCumulated.receiverReport.interarrivalJitter / context->receiverReportCumulatedCount,
+                        (long unsigned int)rtpStats->receiverReport.receiverLostCount,
+                        (long unsigned int)context->rtpStatsCumulated.receiverReport.receiverFractionLost / context->receiverReportCumulatedCount,
                         (long unsigned int)rtpStats->receiverReport.receiverExtHighestSeqNum);
             }
             else
@@ -285,11 +316,13 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
                         (long unsigned int)0, (long unsigned int)0,
                         (long unsigned int)0);
             }
-            if (rtpStats->djbMetricsReport.timestamp)
+            if ((rtpStats->djbMetricsReport.timestamp != 0) && (context->djbMetricsReportCumulatedCount > 0))
             {
                 fprintf(context->outputFile, " %llu %lu %lu %lu %lu", (long long unsigned int)rtpStats->djbMetricsReport.timestamp,
-                        (long unsigned int)rtpStats->djbMetricsReport.djbNominal, (long unsigned int)rtpStats->djbMetricsReport.djbMax,
-                        (long unsigned int)rtpStats->djbMetricsReport.djbHighWatermark, (long unsigned int)rtpStats->djbMetricsReport.djbLowWatermark);
+                        (long unsigned int)context->rtpStatsCumulated.djbMetricsReport.djbNominal / context->djbMetricsReportCumulatedCount,
+                        (long unsigned int)context->rtpStatsCumulated.djbMetricsReport.djbMax / context->djbMetricsReportCumulatedCount,
+                        (long unsigned int)context->rtpStatsCumulated.djbMetricsReport.djbHighWatermark / context->djbMetricsReportCumulatedCount,
+                        (long unsigned int)context->rtpStatsCumulated.djbMetricsReport.djbLowWatermark / context->djbMetricsReportCumulatedCount);
             }
             else
             {
@@ -301,8 +334,13 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
                     (long long int)rtpStats->clockDelta.peerClockDelta, (long unsigned int)rtpStats->clockDelta.roundTripDelay,
                     (long unsigned int)rtpStats->clockDelta.peer2meDelay, (long unsigned int)rtpStats->clockDelta.me2peerDelay);
             fprintf(context->outputFile, "\n");
-            context->fileOutputTimestamp = curTime;
         }
+
+        memset(&context->rtpStatsCumulated, 0, sizeof(ARSTREAM2_RTP_RtpStats_t));
+        context->senderReportCumulatedCount = 0;
+        context->receiverReportCumulatedCount = 0;
+        context->djbMetricsReportCumulatedCount = 0;
+        context->fileOutputTimestamp = curTime;
     }
 }
 

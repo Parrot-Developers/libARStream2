@@ -24,6 +24,10 @@ typedef struct
 {
     uint64_t fileOutputTimestamp;
     FILE *outputFile;
+    ARSTREAM2_RTP_RtpStats_t rtpStatsCumulated;
+    unsigned int senderReportCumulatedCount;
+    unsigned int receiverReportCumulatedCount;
+    unsigned int djbMetricsReportCumulatedCount;
 
 } ARSTREAM2_StreamStats_RtpStatsContext_t;
 
