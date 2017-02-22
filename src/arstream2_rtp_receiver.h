@@ -56,6 +56,16 @@
 
 
 /**
+ * @brief Callback function for RTP stats
+ * This callback function is called when an RTCP compound packet has been sent.
+ *
+ * @param[in] rtpStats Pointer to RTP stats data
+ * @param[in] userPtr Global callback user pointer
+ */
+typedef void (*ARSTREAM2_RtpReceiver_RtpStatsCallback_t) (const ARSTREAM2_RTP_RtpStats_t *rtpStats, void *userPtr);
+
+
+/**
  * @brief RtpReceiver net configuration parameters
  */
 typedef struct ARSTREAM2_RtpReceiver_NetConfig_t
@@ -93,6 +103,8 @@ typedef struct ARSTREAM2_RtpReceiver_Config_t
     ARSTREAM2_H264_AuFifo_t *auFifo;                /**< User-provided access unit FIFO */
     ARSTREAM2_H264_ReceiverAuCallback_t auCallback;
     void *auCallbackUserPtr;
+    ARSTREAM2_RtpReceiver_RtpStatsCallback_t rtpStatsCallback;   /**< RTP stats callback function (optional, can be NULL) */
+    void *rtpStatsCallbackUserPtr;                  /**< RTP stats callback function user pointer (optional, can be NULL) */
     int maxPacketSize;                              /**< Maximum network packet size in bytes (should be provided by the server, if 0 the maximum UDP packet size is used) */
     int insertStartCodes;                           /**< Boolean-like (0-1) flag: if active insert a start code prefix before NAL units */
     int generateReceiverReports;                    /**< Boolean-like (0-1) flag: if active generate RTCP receiver reports */
@@ -173,6 +185,8 @@ struct ARSTREAM2_RtpReceiver_t {
     ARSTREAM2_RTP_ReceiverContext_t rtpReceiverContext;
     ARSTREAM2_RTPH264_ReceiverContext_t rtph264ReceiverContext;
     ARSTREAM2_RTCP_ReceiverContext_t rtcpReceiverContext;
+    ARSTREAM2_RtpReceiver_RtpStatsCallback_t rtpStatsCallback;
+    void *rtpStatsCallbackUserPtr;
 
     char *canonicalName;
     char *friendlyName;

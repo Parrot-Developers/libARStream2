@@ -127,12 +127,16 @@ typedef struct ARSTREAM2_StreamReceiver_s
     char *dateAndTime;
     char *debugPath;
     ARSTREAM2_StreamStats_VideoStatsContext_t videoStatsCtx;
+    ARSTREAM2_StreamStats_RtpStatsContext_t rtpStatsCtx;
+    ARSTREAM2_StreamStats_RtpLossContext_t rtpLossCtx;
+    int8_t lastKnownRssi;
 
 } ARSTREAM2_StreamReceiver_t;
 
 
 static int ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame(ARSTREAM2_StreamReceiver_t *streamReceiver, ARSTREAM2_H264_AccessUnit_t *nextAu);
 static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoItem_t *auItem, void *userPtr);
+static void ARSTREAM2_StreamReceiver_RtpReceiverStatsCallback(const ARSTREAM2_RTP_RtpStats_t *rtpStats, void *userPtr);
 static int ARSTREAM2_StreamReceiver_H264FilterSpsPpsCallback(uint8_t *spsBuffer, int spsSize, uint8_t *ppsBuffer, int ppsSize, void *userPtr);
 static int ARSTREAM2_StreamReceiver_StreamRecorderInit(ARSTREAM2_StreamReceiver_t *streamReceiver);
 static int ARSTREAM2_StreamReceiver_StreamRecorderStop(ARSTREAM2_StreamReceiver_t *streamReceiver);
@@ -229,6 +233,10 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
         ARSTREAM2_StreamReceiver_AutoStartRecorder(streamReceiver);
         ARSTREAM2_StreamStats_VideoStatsFileOpen(&streamReceiver->videoStatsCtx, streamReceiver->debugPath, streamReceiver->friendlyName,
                                                  streamReceiver->dateAndTime, ARSTREAM2_H264_MB_STATUS_ZONE_COUNT, ARSTREAM2_H264_MB_STATUS_CLASS_COUNT);
+        ARSTREAM2_StreamStats_RtpStatsFileOpen(&streamReceiver->rtpStatsCtx, streamReceiver->debugPath,
+                                               streamReceiver->friendlyName, streamReceiver->dateAndTime);
+        ARSTREAM2_StreamStats_RtpLossFileOpen(&streamReceiver->rtpLossCtx, streamReceiver->debugPath,
+                                              streamReceiver->friendlyName, streamReceiver->dateAndTime);
     }
 
     if (ret == ARSTREAM2_OK)
@@ -413,6 +421,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
         receiverConfig.auFifo = &(streamReceiver->auFifo);
         receiverConfig.auCallback = ARSTREAM2_StreamReceiver_RtpReceiverAuCallback;
         receiverConfig.auCallbackUserPtr = streamReceiver;
+        receiverConfig.rtpStatsCallback = ARSTREAM2_StreamReceiver_RtpReceiverStatsCallback;
+        receiverConfig.rtpStatsCallbackUserPtr = streamReceiver;
         receiverConfig.maxPacketSize = config->maxPacketSize;
         receiverConfig.insertStartCodes = 1;
         receiverConfig.generateReceiverReports = config->generateReceiverReports;
@@ -489,6 +499,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
             if (recorderThreadMutexInit) ARSAL_Mutex_Destroy(&(streamReceiver->recorder.threadMutex));
             if (recorderThreadCondInit) ARSAL_Cond_Destroy(&(streamReceiver->recorder.threadCond));
             ARSTREAM2_StreamStats_VideoStatsFileClose(&streamReceiver->videoStatsCtx);
+            ARSTREAM2_StreamStats_RtpStatsFileClose(&streamReceiver->rtpStatsCtx);
+            ARSTREAM2_StreamStats_RtpLossFileClose(&streamReceiver->rtpLossCtx);
             free(streamReceiver->debugPath);
             free(streamReceiver->friendlyName);
             free(streamReceiver->dateAndTime);
@@ -589,6 +601,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Free(ARSTREAM2_StreamReceiver_Handle *
     free(streamReceiver->pSps);
     free(streamReceiver->pPps);
     ARSTREAM2_StreamStats_VideoStatsFileClose(&streamReceiver->videoStatsCtx);
+    ARSTREAM2_StreamStats_RtpStatsFileClose(&streamReceiver->rtpStatsCtx);
+    ARSTREAM2_StreamStats_RtpLossFileClose(&streamReceiver->rtpLossCtx);
     free(streamReceiver->debugPath);
     free(streamReceiver->friendlyName);
     free(streamReceiver->dateAndTime);
@@ -948,6 +962,7 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
             {
                 vs->rssi = (int8_t)auItem->au.buffer->metadataBuffer[54];
             }
+            streamReceiver->lastKnownRssi = vs->rssi;
 
             eARSTREAM2_ERROR recvErr = ARSTREAM2_RtpReceiver_UpdateVideoStats(streamReceiver->receiver, vs);
             if (recvErr != ARSTREAM2_OK)
@@ -991,6 +1006,32 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
     }
 
     return err;
+}
+
+
+static void ARSTREAM2_StreamReceiver_RtpReceiverStatsCallback(const ARSTREAM2_RTP_RtpStats_t *rtpStats, void *userPtr)
+{
+    ARSTREAM2_StreamReceiver_t* streamReceiver = (ARSTREAM2_StreamReceiver_t*)userPtr;
+
+    if (!userPtr)
+    {
+        return;
+    }
+
+    if (rtpStats)
+    {
+        ARSTREAM2_RTP_RtpStats_t s;
+        struct timespec t1;
+        uint64_t curTime;
+
+        ARSAL_Time_GetTime(&t1);
+        curTime = (uint64_t)t1.tv_sec * 1000000 + (uint64_t)t1.tv_nsec / 1000;
+
+        memcpy(&s, rtpStats, sizeof(ARSTREAM2_RTP_RtpStats_t));
+        s.rssi = streamReceiver->lastKnownRssi;
+        ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamReceiver->rtpStatsCtx, &s, curTime);
+        ARSTREAM2_StreamStats_RtpLossFileWrite(&streamReceiver->rtpLossCtx, &s);
+    }
 }
 
 
@@ -1451,6 +1492,7 @@ void* ARSTREAM2_StreamReceiver_RunAppOutputThread(void *streamReceiverHandle)
                         {
                             vs->rssi = (int8_t)au->buffer->metadataBuffer[54];
                         }
+                        streamReceiver->lastKnownRssi = vs->rssi;
 
                         eARSTREAM2_ERROR recvErr = ARSTREAM2_RtpReceiver_UpdateVideoStats(streamReceiver->receiver, vs);
                         if (recvErr != ARSTREAM2_OK)

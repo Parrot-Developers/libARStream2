@@ -930,6 +930,8 @@ ARSTREAM2_RtpReceiver_t* ARSTREAM2_RtpReceiver_New(ARSTREAM2_RtpReceiver_Config_
         retReceiver->packetFifo = config->packetFifo;
         retReceiver->packetFifoQueue = config->packetFifoQueue;
         retReceiver->msgVecCount = retReceiver->packetFifo->bufferPoolSize;
+        retReceiver->rtpStatsCallback = config->rtpStatsCallback;
+        retReceiver->rtpStatsCallbackUserPtr = config->rtpStatsCallbackUserPtr;
         retReceiver->rtph264ReceiverContext.auCallback = config->auCallback;
         retReceiver->rtph264ReceiverContext.auCallbackUserPtr = config->auCallbackUserPtr;
         retReceiver->rtpReceiverContext.maxPacketSize = (config->maxPacketSize > 0) ? config->maxPacketSize - ARSTREAM2_RTP_TOTAL_HEADERS_SIZE : ARSTREAM2_RTP_MAX_PAYLOAD_SIZE;
@@ -944,6 +946,7 @@ ARSTREAM2_RtpReceiver_t* ARSTREAM2_RtpReceiver_New(ARSTREAM2_RtpReceiver_Config_
         retReceiver->rtph264ReceiverContext.startCodeLength = (retReceiver->insertStartCodes) ? ARSTREAM2_H264_BYTE_STREAM_NALU_START_CODE_LENGTH : 0;
         retReceiver->rtcpReceiverContext.receiverSsrc = ARSTREAM2_RTP_RECEIVER_SSRC;
         retReceiver->rtcpReceiverContext.rtcpByteRate = ARSTREAM2_RTCP_RECEIVER_DEFAULT_BITRATE / 8;
+        retReceiver->rtcpReceiverContext.rtpClockRate = 90000;
         retReceiver->rtcpReceiverContext.sdesItemCount = 0;
         if ((retReceiver->canonicalName) && (strlen(retReceiver->canonicalName)))
         {
@@ -1444,6 +1447,64 @@ eARSTREAM2_ERROR ARSTREAM2_RtpReceiver_ProcessRtcp(ARSTREAM2_RtpReceiver_t *rece
                     {
                         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_RECEIVER_TAG, "Control channel - send error (%d): %s", errno, strerror(errno));
                     }
+                }
+
+                if (receiver->rtpStatsCallback != NULL)
+                {
+                    ARSTREAM2_RTP_RtpStats_t rtpStats;
+
+                    memset(&rtpStats, 0, sizeof(ARSTREAM2_RTP_RtpStats_t));
+                    if (receiver->rtcpReceiverContext.lastSrReceptionTimestamp != 0)
+                    {
+                        rtpStats.senderReport.timestamp = receiver->rtcpReceiverContext.lastSrReceptionTimestamp;
+                        rtpStats.senderReport.lastInterval = receiver->rtcpReceiverContext.lastSrInterval;
+                        rtpStats.senderReport.intervalPacketCount = receiver->rtcpReceiverContext.srIntervalPacketCount;
+                        rtpStats.senderReport.intervalByteCount = receiver->rtcpReceiverContext.srIntervalByteCount;
+                    }
+                    if (receiver->rtcpReceiverContext.lastRrTimestamp != 0)
+                    {
+                        rtpStats.receiverReport.timestamp = receiver->rtcpReceiverContext.lastRrTimestamp;
+                        rtpStats.receiverReport.roundTripDelay = 0; // unable to compute on the receiver side
+                        rtpStats.receiverReport.interarrivalJitter = receiver->rtcpReceiverContext.lastRrInterarrivalJitter;
+                        rtpStats.receiverReport.receiverLostCount = receiver->rtcpReceiverContext.lastRrPacketsLost;
+                        rtpStats.receiverReport.receiverFractionLost = receiver->rtcpReceiverContext.lastRrFractionLost;
+                        rtpStats.receiverReport.receiverExtHighestSeqNum = receiver->rtcpReceiverContext.lastRrExtHighestSeqNum;
+                    }
+                    if ((generateLossReport) && (receiver->rtcpReceiverContext.lossReportCtx.lastSendTime != 0))
+                    {
+                        rtpStats.lossReport.timestamp = receiver->rtcpReceiverContext.lossReportCtx.lastSendTime;
+                        rtpStats.lossReport.startSeqNum = (uint16_t)(receiver->rtcpReceiverContext.lossReportCtx.startSeqNum & 0xFFFF);
+                        rtpStats.lossReport.endSeqNum = (uint16_t)(receiver->rtcpReceiverContext.lossReportCtx.endSeqNum & 0xFFFF);
+                        rtpStats.lossReport.receivedFlag = receiver->rtcpReceiverContext.lossReportCtx.receivedFlag;
+                    }
+                    if ((receiver->rtcpReceiverContext.djbReportCtx.djbMetricsAvailable) && (receiver->rtcpReceiverContext.djbReportCtx.lastSendTime != 0))
+                    {
+                        rtpStats.djbMetricsReport.timestamp = receiver->rtcpReceiverContext.djbReportCtx.lastSendTime;
+                        rtpStats.djbMetricsReport.djbNominal = (receiver->rtcpReceiverContext.djbReportCtx.djbNominal <= 0xFFFD) ?
+                                                               receiver->rtcpReceiverContext.djbReportCtx.djbNominal : 0xFFFE;
+                        rtpStats.djbMetricsReport.djbMax = (receiver->rtcpReceiverContext.djbReportCtx.djbMax <= 0xFFFD) ?
+                                                           receiver->rtcpReceiverContext.djbReportCtx.djbMax : 0xFFFE;
+                        rtpStats.djbMetricsReport.djbHighWatermark = (receiver->rtcpReceiverContext.djbReportCtx.djbHighWatermark <= 0xFFFD) ?
+                                                                     receiver->rtcpReceiverContext.djbReportCtx.djbHighWatermark : 0xFFFE;
+                        rtpStats.djbMetricsReport.djbLowWatermark = (receiver->rtcpReceiverContext.djbReportCtx.djbLowWatermark <= 0xFFFD) ?
+                                                                    receiver->rtcpReceiverContext.djbReportCtx.djbLowWatermark : 0xFFFE;
+                    }
+                    rtpStats.clockDelta.peerClockDelta = receiver->rtcpReceiverContext.clockDeltaCtx.clockDeltaAvg;
+                    rtpStats.clockDelta.roundTripDelay = (uint32_t)receiver->rtcpReceiverContext.clockDeltaCtx.rtDelayAvg;
+                    rtpStats.clockDelta.peer2meDelay = (uint32_t)receiver->rtcpReceiverContext.clockDeltaCtx.p2mDelayAvg;
+                    rtpStats.clockDelta.me2peerDelay = (uint32_t)receiver->rtcpReceiverContext.clockDeltaCtx.m2pDelayAvg;
+
+                    /* Call the RTP stats callback function */
+                    receiver->rtpStatsCallback(&rtpStats, receiver->rtpStatsCallbackUserPtr);
+                }
+            }
+
+            if (generateLossReport)
+            {
+                int err = ARSTREAM2_RTCP_LossReportReset(&receiver->rtcpReceiverContext.lossReportCtx);
+                if (err != 0)
+                {
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_RECEIVER_TAG, "ARSTREAM2_RTCP_LossReportReset() failed (%d)", err);
                 }
             }
 

@@ -402,7 +402,9 @@ int ARSTREAM2_RTCP_Receiver_GenerateReceiverReport(ARSTREAM2_RTCP_ReceiverReport
 
         context->lastRrExtHighestSeqNum = context->extHighestSeqNum;
         context->lastRrPacketsReceived = context->packetsReceived;
+        context->lastRrInterarrivalJitter = (uint32_t)(((uint64_t)context->interarrivalJitter * 1000000 + context->rtpClockRate / 2) / context->rtpClockRate);
         context->lastRrPacketsLost = context->packetsLost;
+        context->lastRrFractionLost = fractionLost;
         context->lastRrTimestamp = sendTimestamp;
     }
     else if (rrCount > 1)
@@ -997,12 +999,6 @@ int ARSTREAM2_RTCP_GenerateExtendedReport(ARSTREAM2_RTCP_ExtendedReport_t *xr,
 
         lossRle->length = htons((sizeof(ARSTREAM2_RTCP_LossRleReportBlock_t) + chunkCount * 2) / 4 - 1);
         _size += chunkCount * 2;
-
-        int err = ARSTREAM2_RTCP_LossReportReset(lossReportCtx);
-        if (err != 0)
-        {
-            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "ARSTREAM2_RTCP_LossReportReset() failed (%d)", err);
-        }
     }
 
     xr->length = htons(_size / 4 - 1);

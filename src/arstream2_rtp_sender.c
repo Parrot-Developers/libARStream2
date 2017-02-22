@@ -1262,7 +1262,7 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
                 rtpStats.clockDelta.peer2meDelay = (uint32_t)sender->rtcpSenderContext.clockDeltaCtx.p2mDelayAvg;
                 rtpStats.clockDelta.me2peerDelay = (uint32_t)sender->rtcpSenderContext.clockDeltaCtx.m2pDelayAvg;
 
-                /* Call the receiver report callback function */
+                /* Call the RTP stats callback function */
                 sender->rtpStatsCallback(&rtpStats, sender->rtpStatsCallbackUserPtr);
             }
 

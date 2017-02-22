@@ -340,6 +340,7 @@ typedef struct ARSTREAM2_RTCP_ReceiverContext_s {
     uint64_t prevSrNtpTimestamp;
     uint32_t prevSrPacketCount;
     uint32_t prevSrByteCount;
+    uint32_t rtpClockRate;
     int64_t tsAnum;
     int64_t tsAden;
     uint32_t lastSrInterval; // in microseconds
@@ -354,6 +355,8 @@ typedef struct ARSTREAM2_RTCP_ReceiverContext_s {
     uint32_t lastRrExtHighestSeqNum;
     uint32_t lastRrPacketsReceived;
     uint32_t lastRrPacketsLost;
+    uint32_t lastRrFractionLost;
+    uint32_t lastRrInterarrivalJitter;
     uint64_t lastSrReceptionTimestamp;
     uint64_t lastRrTimestamp;
     uint64_t lastRtcpTimestamp;

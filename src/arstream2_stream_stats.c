@@ -281,7 +281,7 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
             }
             else
             {
-                fprintf(context->outputFile, "%llu %lu %lu %llu %llu %llu %llu %llu %llu %llu %llu", (long long unsigned int)0,
+                fprintf(context->outputFile, " %llu %lu %lu %llu %llu %llu %llu %llu %llu %llu %llu", (long long unsigned int)0,
                         (long unsigned int)0, (long unsigned int)0,
                         (long long unsigned int)0, (long long unsigned int)0,
                         (long long unsigned int)0, (long long unsigned int)0,
