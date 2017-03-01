@@ -30,7 +30,6 @@ static int ARSTREAM2_RtpReceiver_SetSocketSendBufferSize(ARSTREAM2_RtpReceiver_t
     int ret = 0, err;
     socklen_t size2 = sizeof(size2);
 
-    size /= 2;
     err = setsockopt(socket, SOL_SOCKET, SO_SNDBUF, (void*)&size, sizeof(size));
     if (err != 0)
     {
@@ -47,7 +46,7 @@ static int ARSTREAM2_RtpReceiver_SetSocketSendBufferSize(ARSTREAM2_RtpReceiver_t
     }
     else
     {
-        ARSAL_PRINT(ARSAL_PRINT_DEBUG, ARSTREAM2_RTP_RECEIVER_TAG, "Socket send buffer size is %d bytes", size);
+        ARSAL_PRINT(ARSAL_PRINT_DEBUG, ARSTREAM2_RTP_RECEIVER_TAG, "Socket send buffer size is 2*%d bytes", size);
     }
 
     return ret;
@@ -59,7 +58,6 @@ static int ARSTREAM2_RtpReceiver_SetSocketReceiveBufferSize(ARSTREAM2_RtpReceive
     int ret = 0, err;
     socklen_t size2 = sizeof(size2);
 
-    size /= 2;
     err = setsockopt(socket, SOL_SOCKET, SO_RCVBUF, (void*)&size, sizeof(size));
     if (err != 0)
     {
@@ -76,7 +74,7 @@ static int ARSTREAM2_RtpReceiver_SetSocketReceiveBufferSize(ARSTREAM2_RtpReceive
     }
     else
     {
-        ARSAL_PRINT(ARSAL_PRINT_DEBUG, ARSTREAM2_RTP_RECEIVER_TAG, "Socket receive buffer size is %d bytes", size);
+        ARSAL_PRINT(ARSAL_PRINT_DEBUG, ARSTREAM2_RTP_RECEIVER_TAG, "Socket receive buffer size is 2*%d bytes", size);
     }
 
     return ret;
