@@ -105,7 +105,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_Init(ARSTREAM2_StreamSender_Handle *stre
     streamSender = (ARSTREAM2_StreamSender_t*)malloc(sizeof(*streamSender));
     if (!streamSender)
     {
-        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_SENDER_TAG, "Allocation failed (size %ld)", sizeof(*streamSender));
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_SENDER_TAG, "Allocation failed (size %zu)", sizeof(*streamSender));
         ret = ARSTREAM2_ERROR_ALLOC;
     }
 

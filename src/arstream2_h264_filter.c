@@ -799,7 +799,7 @@ eARSTREAM2_ERROR ARSTREAM2_H264Filter_Init(ARSTREAM2_H264Filter_Handle *filterHa
     filter = (ARSTREAM2_H264Filter_t*)malloc(sizeof(*filter));
     if (!filter)
     {
-        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_TAG, "Allocation failed (size %ld)", sizeof(*filter));
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_TAG, "Allocation failed (size %zu)", sizeof(*filter));
         ret = ARSTREAM2_ERROR_ALLOC;
     }
 
