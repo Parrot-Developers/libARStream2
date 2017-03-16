@@ -177,7 +177,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
     streamReceiver = (ARSTREAM2_StreamReceiver_t*)malloc(sizeof(*streamReceiver));
     if (!streamReceiver)
     {
-        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %ld)", sizeof(*streamReceiver));
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %zu)", sizeof(*streamReceiver));
         ret = ARSTREAM2_ERROR_ALLOC;
     }
 
@@ -2424,7 +2424,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_StartResender(ARSTREAM2_StreamReceiver
     resender = (ARSTREAM2_RtpResender_t*)malloc(sizeof(*resender));
     if (!resender)
     {
-        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %ld)", sizeof(*resender));
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %zu)", sizeof(*resender));
         ret = ARSTREAM2_ERROR_ALLOC;
     }
 
@@ -2504,7 +2504,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_StartResender(ARSTREAM2_StreamReceiver
             streamReceiver->resendQueue = realloc(streamReceiver->resendQueue, streamReceiver->resendCount * sizeof(ARSTREAM2_RTP_PacketFifoQueue_t*));
             if (!streamReceiver->resendQueue)
             {
-                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %ld)", streamReceiver->resendCount * sizeof(ARSTREAM2_RTP_PacketFifoQueue_t*));
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %zu)", streamReceiver->resendCount * sizeof(ARSTREAM2_RTP_PacketFifoQueue_t*));
                 ret = ARSTREAM2_ERROR_ALLOC;
             }
             else
@@ -2516,7 +2516,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_StartResender(ARSTREAM2_StreamReceiver
             streamReceiver->resendTimeout = realloc(streamReceiver->resendTimeout, streamReceiver->resendCount * sizeof(uint32_t));
             if (!streamReceiver->resendTimeout)
             {
-                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %ld)", streamReceiver->resendCount * sizeof(uint32_t));
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %zu)", streamReceiver->resendCount * sizeof(uint32_t));
                 ret = ARSTREAM2_ERROR_ALLOC;
             }
             else
@@ -2620,7 +2620,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_StopResender(ARSTREAM2_StreamReceiver_
         streamReceiver->resendQueue = realloc(streamReceiver->resendQueue, streamReceiver->resendCount * sizeof(ARSTREAM2_RTP_PacketFifoQueue_t*));
         if (!streamReceiver->resendQueue)
         {
-            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %ld)", streamReceiver->resendCount * sizeof(ARSTREAM2_RTP_PacketFifoQueue_t*));
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %zu)", streamReceiver->resendCount * sizeof(ARSTREAM2_RTP_PacketFifoQueue_t*));
             ret = ARSTREAM2_ERROR_ALLOC;
         }
         else
@@ -2632,7 +2632,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_StopResender(ARSTREAM2_StreamReceiver_
         streamReceiver->resendTimeout = realloc(streamReceiver->resendTimeout, streamReceiver->resendCount * sizeof(uint32_t));
         if (!streamReceiver->resendTimeout)
         {
-            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %ld)", streamReceiver->resendCount * sizeof(uint32_t));
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed (size %zu)", streamReceiver->resendCount * sizeof(uint32_t));
             ret = ARSTREAM2_ERROR_ALLOC;
         }
         else

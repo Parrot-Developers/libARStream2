@@ -350,6 +350,11 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_pictureTiming(ARSTREAM2_H264Writ
             }
         }
     }
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (payloadSizeBits & 7)
+    {
+        payloadSizeBits++;
+    }
     payloadSize = (payloadSizeBits + 7) / 8;
 
     /*while (payloadType > 255) // logically dead code
@@ -587,6 +592,17 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_pictureTiming(ARSTREAM2_H264Writ
         }
     }
 
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (writer->cacheLength & 7)
+    {
+        ret = writeBits(writer, 1, 1, 1);
+        if (ret < 0)
+        {
+            return -1;
+        }
+        _bitsWritten += ret;
+    }
+
     ret = bitstreamByteAlign(writer, 1);
     if (ret < 0)
     {
@@ -629,6 +645,11 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_recoveryPoint(ARSTREAM2_H264Writ
 
     payloadType = ARSTREAM2_H264_SEI_PAYLOAD_TYPE_RECOVERY_POINT;
     payloadSizeBits = recoveryFrameCntSize + 1 + 1 + 2;
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (payloadSizeBits & 7)
+    {
+        payloadSizeBits++;
+    }
     payloadSize = (payloadSizeBits + 7) / 8;
 
     /*while (payloadType > 255) // logically dead code
@@ -701,6 +722,17 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_recoveryPoint(ARSTREAM2_H264Writ
     }
     _bitsWritten += ret;
 
+    // If not byte-aligned, write '1' bit and then align to byte
+    if (writer->cacheLength & 7)
+    {
+        ret = writeBits(writer, 1, 1, 1);
+        if (ret < 0)
+        {
+            return -1;
+        }
+        _bitsWritten += ret;
+    }
+
     ret = bitstreamByteAlign(writer, 1);
     if (ret < 0)
     {
@@ -770,6 +802,11 @@ static int ARSTREAM2_H264Writer_WriteSeiPayload_userDataUnregistered(ARSTREAM2_H
         }
         _bitsWritten += ret;
     }
+
+    /* If not byte-aligned, write '1' bit and then align to byte...
+     * ... but it's useless here as user data SEI are always byte-aligned.
+     * So we do nothing more.
+     */
 
     ret = bitstreamByteAlign(writer, 1);
     if (ret < 0)
@@ -1610,6 +1647,13 @@ eARSTREAM2_ERROR ARSTREAM2_H264Writer_RewriteNonRefPSliceNalu(ARSTREAM2_H264Writ
     }
     *(pDst++) = dst;
     bitsWritten += 8;
+
+    if (pDst[-1] == 0x00)
+    {
+        /* If the last byte was 0x80, after the shift the rbsp_stop_one_bit is on the previous byte
+         * and we should not output a useless 0x00 byte => drop the last 0x00 byte */
+        bitsWritten -= 8;
+    }
 
     *outputSize = bitsWritten / 8;
 

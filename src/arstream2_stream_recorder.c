@@ -514,7 +514,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamRecorder_Init(ARSTREAM2_StreamRecorder_Handle *
     streamRecorder = (ARSTREAM2_StreamRecorder_t*)malloc(sizeof(*streamRecorder));
     if (!streamRecorder)
     {
-        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECORDER_TAG, "Allocation failed (size %ld)", sizeof(*streamRecorder));
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECORDER_TAG, "Allocation failed (size %zu)", sizeof(*streamRecorder));
         ret = ARSTREAM2_ERROR_ALLOC;
     }
 

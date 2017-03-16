@@ -171,7 +171,6 @@ static int ARSTREAM2_RtpSender_SetSocketSendBufferSize(ARSTREAM2_RtpSender_t *se
     int ret = 0, err;
     socklen_t size2 = sizeof(size2);
 
-    size /= 2;
     err = setsockopt(socket, SOL_SOCKET, SO_SNDBUF, (void*)&size, sizeof(size));
     if (err != 0)
     {
@@ -188,7 +187,7 @@ static int ARSTREAM2_RtpSender_SetSocketSendBufferSize(ARSTREAM2_RtpSender_t *se
     }
     else
     {
-        ARSAL_PRINT(ARSAL_PRINT_DEBUG, ARSTREAM2_RTP_SENDER_TAG, "Socket send buffer size is %d bytes", size);
+        ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_RTP_SENDER_TAG, "Socket send buffer size is 2*%d bytes", size / 2);
     }
 
     return ret;
@@ -1288,8 +1287,6 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
         sender->nextSrDelay = (size + ARSTREAM2_RTP_UDP_HEADER_SIZE + ARSTREAM2_RTP_IP_HEADER_SIZE) * 1000000 / sender->rtcpSenderContext.rtcpByteRate;
         if (sender->nextSrDelay < ARSTREAM2_RTCP_SENDER_MIN_PACKET_TIME_INTERVAL) sender->nextSrDelay = ARSTREAM2_RTCP_SENDER_MIN_PACKET_TIME_INTERVAL;
     }
-
-    sender->nextSrDelay = sender->nextSrDelay - srDelay;
 
     return retVal;
 }

@@ -1908,6 +1908,7 @@ static int ARSTREAM2_H264Parser_ParseSeiPayload_userDataUnregistered(ARSTREAM2_H
         }
         _readBits += ret * 8;
     }
+
     return _readBits;
 }
 
@@ -2417,7 +2418,18 @@ static int ARSTREAM2_H264Parser_ParseSei(ARSTREAM2_H264Parser_t* parser)
                 break;
         }
 
-        // Byte align
+        // If not byte-aligned, read '1' bit and then align to byte
+        if (parser->cacheLength & 7)
+        {
+            ret = readBits(parser, 1, &val, 1);
+            if (ret < 0)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_PARSER_TAG, "Failed to read from the bitstream");
+                return ret;
+            }
+            _readBits2 += ret;
+        }
+
         ret = bitstreamByteAlign(parser);
         if (ret < 0)
         {
@@ -2425,7 +2437,7 @@ static int ARSTREAM2_H264Parser_ParseSei(ARSTREAM2_H264Parser_t* parser)
             return ret;
         }
         _readBits2 += ret;
-        
+
         if (_readBits2 != payloadSize * 8)
         {
             if (parser->config.printLogs) ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_H264_PARSER_TAG, "---- warning: read bits != payload size (%d != %d)", _readBits2, payloadSize * 8);

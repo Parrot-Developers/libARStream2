@@ -25,6 +25,9 @@
 #include "arstream2_h264.h"
 
 
+#define ARSTREAM2_H264_FILTER_MAX_INFERRED_IDR_INTERVAL 60
+
+
 /*
  * Types
  */
@@ -80,6 +83,7 @@ typedef struct ARSTREAM2_H264Filter_s
 
     uint8_t *currentAuRefMacroblockStatus;
     uint8_t *currentAuMacroblockStatus;
+    int currentAuIsIdr;
     int currentAuIsRef;
     int currentAuInferredSliceMbCount;
     int currentAuInferredPreviousSliceFirstMb;
@@ -107,6 +111,7 @@ typedef struct ARSTREAM2_H264Filter_s
     int mbCount;
     float framerate;
     int maxFrameNum;
+    int inferredIdrInterval;
 
 } ARSTREAM2_H264Filter_t;
 
