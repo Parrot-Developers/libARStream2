@@ -65,6 +65,7 @@ typedef struct {
 typedef struct ARSTREAM2_RTP_RtpStats_s
 {
     uint64_t timestamp;
+    int8_t rssi;
     uint32_t senderPacketCount;
     uint64_t senderByteCount;
     struct {
@@ -75,13 +76,18 @@ typedef struct ARSTREAM2_RTP_RtpStats_s
     } senderReport;
     struct {
         uint64_t timestamp;
-        int8_t rssi;
         uint32_t roundTripDelay;
         uint32_t interarrivalJitter;
         uint32_t receiverLostCount;
         uint32_t receiverFractionLost;
         uint32_t receiverExtHighestSeqNum;
     } receiverReport;
+    struct {
+        uint64_t timestamp;
+        uint16_t startSeqNum;
+        uint16_t endSeqNum;
+        uint32_t *receivedFlag;
+    } lossReport;
     struct {
         int64_t peerClockDelta;
         uint32_t roundTripDelay;

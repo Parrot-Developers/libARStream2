@@ -12,7 +12,7 @@
 #include "arstream2_h264.h"
 
 
-typedef struct ARSTREAM2_StreamStats_VideoStats_s
+typedef struct
 {
     uint64_t fileOutputTimestamp;
     FILE *outputFile;
@@ -20,12 +20,19 @@ typedef struct ARSTREAM2_StreamStats_VideoStats_s
 } ARSTREAM2_StreamStats_VideoStatsContext_t;
 
 
-typedef struct ARSTREAM2_StreamStats_RtpStats_s
+typedef struct
 {
     uint64_t fileOutputTimestamp;
     FILE *outputFile;
 
 } ARSTREAM2_StreamStats_RtpStatsContext_t;
+
+
+typedef struct
+{
+    FILE *outputFile;
+
+} ARSTREAM2_StreamStats_RtpLossContext_t;
 
 
 void ARSTREAM2_StreamStats_VideoStatsFileOpen(ARSTREAM2_StreamStats_VideoStatsContext_t *context, const char *debugPath, const char *friendlyName,
@@ -37,6 +44,11 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
                                             const char *friendlyName, const char *dateAndTime);
 void ARSTREAM2_StreamStats_RtpStatsFileClose(ARSTREAM2_StreamStats_RtpStatsContext_t *context);
 void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsContext_t *context, const ARSTREAM2_RTP_RtpStats_t *rtpStats);
+
+void ARSTREAM2_StreamStats_RtpLossFileOpen(ARSTREAM2_StreamStats_RtpLossContext_t *context, const char *debugPath,
+                                            const char *friendlyName, const char *dateAndTime);
+void ARSTREAM2_StreamStats_RtpLossFileClose(ARSTREAM2_StreamStats_RtpLossContext_t *context);
+void ARSTREAM2_StreamStats_RtpLossFileWrite(ARSTREAM2_StreamStats_RtpLossContext_t *context, const ARSTREAM2_RTP_RtpStats_t *rtpStats);
 
 
 #endif /* _ARSTREAM2_STREAM_STATS_INTERNAL_H_ */

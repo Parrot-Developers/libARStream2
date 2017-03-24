@@ -27,6 +27,10 @@
 
 #define ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_INTERVAL (1000000)
 
+#define ARSTREAM2_STREAM_STATS_RTP_LOSS_OUTPUT_PATH "rtploss"
+#define ARSTREAM2_STREAM_STATS_RTP_LOSS_OUTPUT_FILENAME "rtploss"
+#define ARSTREAM2_STREAM_STATS_RTP_LOSS_OUTPUT_FILEEXT "dat"
+
 
 void ARSTREAM2_StreamStats_VideoStatsFileOpen(ARSTREAM2_StreamStats_VideoStatsContext_t *context, const char *debugPath, const char *friendlyName,
                                               const char *dateAndTime, uint32_t mbStatusZoneCount, uint32_t mbStatusClassCount)
@@ -41,21 +45,11 @@ void ARSTREAM2_StreamStats_VideoStatsFileOpen(ARSTREAM2_StreamStats_VideoStatsCo
 
     if ((debugPath) && (strlen(debugPath)))
     {
-        snprintf(szOutputFileName, 500, "%s/%s", debugPath,
-                 ARSTREAM2_STREAM_STATS_VIDEO_STATS_OUTPUT_PATH);
-        if ((access(szOutputFileName, F_OK) == 0) && (access(szOutputFileName, W_OK) == 0))
-        {
-            // directory exists and we have write permission
-            snprintf(szOutputFileName, 500, "%s/%s/%s_%s.%s", debugPath,
-                     ARSTREAM2_STREAM_STATS_VIDEO_STATS_OUTPUT_PATH,
-                     ARSTREAM2_STREAM_STATS_VIDEO_STATS_OUTPUT_FILENAME,
-                     dateAndTime,
-                     ARSTREAM2_STREAM_STATS_VIDEO_STATS_OUTPUT_FILEEXT);
-        }
-        else
-        {
-            szOutputFileName[0] = '\0';
-        }
+        snprintf(szOutputFileName, sizeof(szOutputFileName), "%s/%s/%s_%s.%s", debugPath,
+                 ARSTREAM2_STREAM_STATS_VIDEO_STATS_OUTPUT_PATH,
+                 ARSTREAM2_STREAM_STATS_VIDEO_STATS_OUTPUT_FILENAME,
+                 dateAndTime,
+                 ARSTREAM2_STREAM_STATS_VIDEO_STATS_OUTPUT_FILEEXT);
     }
 
     if (strlen(szOutputFileName))
@@ -63,7 +57,7 @@ void ARSTREAM2_StreamStats_VideoStatsFileOpen(ARSTREAM2_StreamStats_VideoStatsCo
         context->outputFile = fopen(szOutputFileName, "w");
         if (!context->outputFile)
         {
-            ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_STREAM_STATS_TAG, "Unable to open video stats output file '%s'", szOutputFileName);
+            ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "Unable to open video stats output file '%s'", szOutputFileName);
         }
         else
         {
@@ -98,7 +92,6 @@ void ARSTREAM2_StreamStats_VideoStatsFileOpen(ARSTREAM2_StreamStats_VideoStatsCo
             }
         }
         fprintf(context->outputFile, "\n");
-        fflush(context->outputFile);
         context->fileOutputTimestamp = 0;
     }
 }
@@ -157,7 +150,6 @@ void ARSTREAM2_StreamStats_VideoStatsFileWrite(ARSTREAM2_StreamStats_VideoStatsC
                 }
             }
             fprintf(context->outputFile, "\n");
-            fflush(context->outputFile);
         }
         context->fileOutputTimestamp = videoStats->timestamp;
     }
@@ -177,21 +169,11 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
 
     if ((debugPath) && (strlen(debugPath)))
     {
-        snprintf(szOutputFileName, 500, "%s/%s", debugPath,
-                 ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_PATH);
-        if ((access(szOutputFileName, F_OK) == 0) && (access(szOutputFileName, W_OK) == 0))
-        {
-            // directory exists and we have write permission
-            snprintf(szOutputFileName, 500, "%s/%s/%s_%s.%s", debugPath,
-                     ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_PATH,
-                     ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_FILENAME,
-                     dateAndTime,
-                     ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_FILEEXT);
-        }
-        else
-        {
-            szOutputFileName[0] = '\0';
-        }
+        snprintf(szOutputFileName, sizeof(szOutputFileName), "%s/%s/%s_%s.%s", debugPath,
+                 ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_PATH,
+                 ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_FILENAME,
+                 dateAndTime,
+                 ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_FILEEXT);
     }
 
     if (strlen(szOutputFileName))
@@ -199,7 +181,7 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
         context->outputFile = fopen(szOutputFileName, "w");
         if (!context->outputFile)
         {
-            ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_STREAM_STATS_TAG, "Unable to open RTP stats output file '%s'", szOutputFileName);
+            ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "Unable to open RTP stats output file '%s'", szOutputFileName);
         }
         else
         {
@@ -219,12 +201,11 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
         titleLen += snprintf(szTitle + titleLen, 200 - titleLen, "%s", dateAndTime);
         ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "RTP stats output file title: '%s'", szTitle);
         fprintf(context->outputFile, "# %s\n", szTitle);
-        fprintf(context->outputFile, "timestamp senderPacketCount senderByteCount");
-        fprintf(context->outputFile, " receiverReportTimestamp receiverReportRssi receiverReportRoundTripDelay receiverReportInterarrivalJitter receiverReportReceiverLostCount receiverReportReceiverFractionLost receiverReportReceiverExtHighestSeqNum");
-        fprintf(context->outputFile, " senderReportLastInterval senderReportIntervalPacketCount senderReportIntervalByteCount");
+        fprintf(context->outputFile, "timestamp rssi senderPacketCount senderByteCount");
+        fprintf(context->outputFile, " senderReportTimestamp senderReportLastInterval senderReportIntervalPacketCount senderReportIntervalByteCount");
+        fprintf(context->outputFile, " receiverReportTimestamp receiverReportRoundTripDelay receiverReportInterarrivalJitter receiverReportReceiverLostCount receiverReportReceiverFractionLost receiverReportReceiverExtHighestSeqNum");
         fprintf(context->outputFile, " peerClockDelta clockDeltaRoundTripDelay clockDeltaPeer2meDelay clockDeltaMe2peerDelay");
         fprintf(context->outputFile, "\n");
-        fflush(context->outputFile);
         context->fileOutputTimestamp = 0;
     }
 }
@@ -247,35 +228,143 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
         return;
     }
 
-    if (!context->outputFile)
+    if ((context->outputFile) && (rtpStats->receiverReport.timestamp != 0))
     {
-        return;
-    }
-
-    if (context->fileOutputTimestamp == 0)
-    {
-        /* init */
-        context->fileOutputTimestamp = rtpStats->timestamp;
-    }
-    if (rtpStats->timestamp >= context->fileOutputTimestamp + ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_INTERVAL)
-    {
-        if (context->outputFile)
+        if (context->fileOutputTimestamp == 0)
         {
-            fprintf(context->outputFile, "%llu %lu %llu", (long long unsigned int)rtpStats->timestamp,
+            /* init */
+            context->fileOutputTimestamp = rtpStats->timestamp;
+        }
+        if (rtpStats->timestamp >= context->fileOutputTimestamp + ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_INTERVAL)
+        {
+            fprintf(context->outputFile, "%llu %i %lu %llu", (long long unsigned int)rtpStats->timestamp, rtpStats->rssi,
                     (long unsigned int)rtpStats->senderPacketCount, (long long unsigned int)rtpStats->senderByteCount);
-            fprintf(context->outputFile, " %llu %i %lu %lu %lu %lu %lu", (long long unsigned int)rtpStats->receiverReport.timestamp, rtpStats->receiverReport.rssi,
-                    (long unsigned int)rtpStats->receiverReport.roundTripDelay, (long unsigned int)rtpStats->receiverReport.interarrivalJitter,
-                    (long unsigned int)rtpStats->receiverReport.receiverLostCount, (long unsigned int)rtpStats->receiverReport.receiverFractionLost,
-                    (long unsigned int)rtpStats->receiverReport.receiverExtHighestSeqNum);
-            fprintf(context->outputFile, " %lu %lu %lu",
-                    (long unsigned int)rtpStats->senderReport.lastInterval, (long unsigned int)rtpStats->senderReport.intervalPacketCount,
-                    (long unsigned int)rtpStats->senderReport.intervalByteCount);
+            if (rtpStats->senderReport.timestamp)
+            {
+                fprintf(context->outputFile, " %llu %lu %lu %lu", (long long unsigned int)rtpStats->senderReport.timestamp,
+                        (long unsigned int)rtpStats->senderReport.lastInterval, (long unsigned int)rtpStats->senderReport.intervalPacketCount,
+                        (long unsigned int)rtpStats->senderReport.intervalByteCount);
+            }
+            else
+            {
+                fprintf(context->outputFile, " %llu %lu %lu %lu", (long long unsigned int)0,
+                        (long unsigned int)0, (long unsigned int)0,
+                        (long unsigned int)0);
+            }
+            if (rtpStats->receiverReport.timestamp != 0)
+            {
+                fprintf(context->outputFile, " %llu %lu %lu %lu %lu %lu", (long long unsigned int)rtpStats->receiverReport.timestamp,
+                        (long unsigned int)rtpStats->receiverReport.roundTripDelay, (long unsigned int)rtpStats->receiverReport.interarrivalJitter,
+                        (long unsigned int)rtpStats->receiverReport.receiverLostCount, (long unsigned int)rtpStats->receiverReport.receiverFractionLost,
+                        (long unsigned int)rtpStats->receiverReport.receiverExtHighestSeqNum);
+            }
+            else
+            {
+                fprintf(context->outputFile, " %llu %i %lu %lu %lu %lu %lu", (long long unsigned int)0, 0,
+                        (long unsigned int)0, (long unsigned int)0,
+                        (long unsigned int)0, (long unsigned int)0,
+                        (long unsigned int)0);
+            }
             fprintf(context->outputFile, " %lld %lu %lu %lu",
                     (long long int)rtpStats->clockDelta.peerClockDelta, (long unsigned int)rtpStats->clockDelta.roundTripDelay,
                     (long unsigned int)rtpStats->clockDelta.peer2meDelay, (long unsigned int)rtpStats->clockDelta.me2peerDelay);
             fprintf(context->outputFile, "\n");
-            fflush(context->outputFile);
+            context->fileOutputTimestamp = rtpStats->timestamp;
         }
-        context->fileOutputTimestamp = rtpStats->timestamp;
+    }
+}
+
+
+void ARSTREAM2_StreamStats_RtpLossFileOpen(ARSTREAM2_StreamStats_RtpLossContext_t *context, const char *debugPath,
+                                           const char *friendlyName, const char *dateAndTime)
+{
+    char szOutputFileName[500];
+    szOutputFileName[0] = '\0';
+
+    if ((!context) || (!dateAndTime))
+    {
+        return;
+    }
+
+    if ((debugPath) && (strlen(debugPath)))
+    {
+        snprintf(szOutputFileName, sizeof(szOutputFileName), "%s/%s/%s_%s.%s", debugPath,
+                 ARSTREAM2_STREAM_STATS_RTP_LOSS_OUTPUT_PATH,
+                 ARSTREAM2_STREAM_STATS_RTP_LOSS_OUTPUT_FILENAME,
+                 dateAndTime,
+                 ARSTREAM2_STREAM_STATS_RTP_LOSS_OUTPUT_FILEEXT);
+    }
+
+    if (strlen(szOutputFileName))
+    {
+        context->outputFile = fopen(szOutputFileName, "w");
+        if (!context->outputFile)
+        {
+            ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "Unable to open RTP loss output file '%s'", szOutputFileName);
+        }
+        else
+        {
+            ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "Opened RTP loss output file '%s'", szOutputFileName);
+        }
+    }
+
+    if (context->outputFile)
+    {
+        char szTitle[200];
+        int titleLen = 0;
+        szTitle[0] = '\0';
+        if ((friendlyName) && (strlen(friendlyName)))
+        {
+            titleLen += snprintf(szTitle + titleLen, 200 - titleLen, "%s ", friendlyName);
+        }
+        titleLen += snprintf(szTitle + titleLen, 200 - titleLen, "%s", dateAndTime);
+        ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "RTP loss output file title: '%s'", szTitle);
+        fprintf(context->outputFile, "# %s\n", szTitle);
+        fprintf(context->outputFile, "timestamp startSeqNum endSeqNum receivedFlag");
+        fprintf(context->outputFile, "\n");
+    }
+}
+
+
+void ARSTREAM2_StreamStats_RtpLossFileClose(ARSTREAM2_StreamStats_RtpLossContext_t *context)
+{
+    if (context->outputFile)
+    {
+        fclose(context->outputFile);
+        context->outputFile = NULL;
+    }
+}
+
+
+void ARSTREAM2_StreamStats_RtpLossFileWrite(ARSTREAM2_StreamStats_RtpLossContext_t *context, const ARSTREAM2_RTP_RtpStats_t *rtpStats)
+{
+    if ((!context) || (!rtpStats))
+    {
+        return;
+    }
+
+    if ((context->outputFile) && (rtpStats->lossReport.timestamp != 0))
+    {
+        fprintf(context->outputFile, "%llu %u %u ", (long long unsigned int)rtpStats->lossReport.timestamp,
+                (rtpStats->lossReport.startSeqNum & 0xFFFF), (rtpStats->lossReport.endSeqNum & 0xFFFF));
+        int i, j, k, packetCount = (int)rtpStats->lossReport.endSeqNum - (int)rtpStats->lossReport.startSeqNum + 1;
+        if (packetCount <= 0) packetCount += (1 << 16);
+        int wordCount = (packetCount >> 5) + ((packetCount & 0x1F) ? 1 : 0);
+        for (i = 0, k = 0; i < wordCount; i++)
+        {
+            if (k == packetCount)
+            {
+                break;
+            }
+            for (j = 0; j < 32; j++, k++)
+            {
+                if (k == packetCount)
+                {
+                    break;
+                }
+                fprintf(context->outputFile, "%c", ((rtpStats->lossReport.receivedFlag[i] >> (31 - j)) & 1) ? '1' : '0');
+            }
+        }
+        fprintf(context->outputFile, "\n");
     }
 }

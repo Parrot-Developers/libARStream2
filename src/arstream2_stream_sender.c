@@ -73,6 +73,7 @@ typedef struct ARSTREAM2_StreamSender_s
     char *dateAndTime;
     char *debugPath;
     ARSTREAM2_StreamStats_RtpStatsContext_t rtpStatsCtx;
+    ARSTREAM2_StreamStats_RtpLossContext_t rtpLossCtx;
     int8_t lastKnownRssi;
     ARSTREAM2_StreamStats_VideoStatsContext_t videoStatsCtx;
     int videoStatsInitPending;
@@ -174,6 +175,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_Init(ARSTREAM2_StreamSender_Handle *stre
         streamSender->videoStatsInitPending = 1;
         ARSTREAM2_StreamStats_RtpStatsFileOpen(&streamSender->rtpStatsCtx, streamSender->debugPath,
                                                streamSender->friendlyName, streamSender->dateAndTime);
+        ARSTREAM2_StreamStats_RtpLossFileOpen(&streamSender->rtpLossCtx, streamSender->debugPath,
+                                              streamSender->friendlyName, streamSender->dateAndTime);
     }
 
     /* Setup the NAL unit FIFO */
@@ -311,6 +314,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_Init(ARSTREAM2_StreamSender_Handle *stre
             if (naluFifoWasCreated == 1) ARSTREAM2_H264_NaluFifoFree(&(streamSender->naluFifo));
             if (packetFifoWasCreated == 1) ARSTREAM2_RTP_PacketFifoFree(&(streamSender->packetFifo));
             ARSTREAM2_StreamStats_RtpStatsFileClose(&streamSender->rtpStatsCtx);
+            ARSTREAM2_StreamStats_RtpLossFileClose(&streamSender->rtpLossCtx);
             free(streamSender->debugPath);
             free(streamSender->friendlyName);
             free(streamSender->dateAndTime);
@@ -394,6 +398,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_Free(ARSTREAM2_StreamSender_Handle *stre
         ARSTREAM2_RTP_PacketFifoFree(&(streamSender->packetFifo));
         ARSTREAM2_StreamStats_VideoStatsFileClose(&streamSender->videoStatsCtx);
         ARSTREAM2_StreamStats_RtpStatsFileClose(&streamSender->rtpStatsCtx);
+        ARSTREAM2_StreamStats_RtpLossFileClose(&streamSender->rtpLossCtx);
         free(streamSender->debugPath);
         free(streamSender->friendlyName);
         free(streamSender->dateAndTime);
@@ -1419,8 +1424,9 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
     {
         ARSTREAM2_RTP_RtpStats_t s;
         memcpy(&s, rtpStats, sizeof(ARSTREAM2_RTP_RtpStats_t));
-        s.receiverReport.rssi = streamSender->lastKnownRssi;
+        s.rssi = streamSender->lastKnownRssi;
         ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamSender->rtpStatsCtx, &s);
+        ARSTREAM2_StreamStats_RtpLossFileWrite(&streamSender->rtpLossCtx, &s);
 
         if (streamSender->rtpStatsCallback)
         {
