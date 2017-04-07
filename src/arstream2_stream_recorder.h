@@ -47,9 +47,16 @@ typedef struct
 
 typedef struct
 {
-    char *makerAndModel;                    /**< product maker and model */
+    char *maker;                            /**< product maker */
+    char *model;                            /**< product model */
+    char *modelId;                          /**< product model ID (ARSDK 16-bit model ID in hex ASCII) */
     char *serialNumber;                     /**< product serial number */
     char *softwareVersion;                  /**< software version */
+    char *buildId;                          /**< software build ID */
+    char *artist;
+    char *title;
+    char *comment;
+    char *copyright;
     char *mediaDate;                        /**< media date and time */
     char *runDate;                          /**< run date and time */
     char *runUuid;                          /**< run UUID */

@@ -15,6 +15,7 @@ extern "C" {
 #include <inttypes.h>
 #include <libARStream2/arstream2_error.h>
 #include <libARStream2/arstream2_stream_stats.h>
+#include <libARStream2/arstream2_stream_metadata.h>
 #include <libARSAL/ARSAL_Socket.h>
 
 
@@ -223,25 +224,6 @@ typedef struct ARSTREAM2_StreamSender_H264NaluDesc_t
 
 
 /**
- * @brief ARSTREAM2 StreamSender untimed metadata.
- */
-typedef struct ARSTREAM2_StreamSender_UntimedMetadata_t
-{
-    char *canonicalName;                            /**< Unique identifier (such as device serial number) */
-    char *friendlyName;                             /**< Friendly name (such as maker + model) */
-    char *applicationName;                          /**< Application name (such as software name and version) */
-    char *runDate;                                  /**< Run date and time */
-    char *runUuid;                                  /**< Run UUID */
-    double takeoffLatitude;                         /**< Takeoff latitude (500 means unknown) */
-    double takeoffLongitude;                        /**< Takeoff longitude (500 means unknown) */
-    float takeoffAltitude;                          /**< Takeoff altitude */
-    float pictureHFov;                              /**< Camera horizontal field of view (0 means unknown) */
-    float pictureVFov;                              /**< Camera vertical field of view (0 means unknown) */
-
-} ARSTREAM2_StreamSender_UntimedMetadata_t;
-
-
-/**
  * @brief Creates a new StreamSender
  * @warning This function allocates memory. The sender must be deleted by a call to ARSTREAM2_StreamSender_Delete()
  *
@@ -377,7 +359,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetDynamicConfig(ARSTREAM2_StreamSender_
  * @return ARSTREAM2_ERROR_NOT_FOUND it the item has not been found
  */
 eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSender_Handle streamSenderHandle,
-                                                           ARSTREAM2_StreamSender_UntimedMetadata_t *metadata, uint32_t *sendInterval);
+                                                           ARSTREAM2_Stream_UntimedMetadata_t *metadata, uint32_t *sendInterval);
 
 
 /**
@@ -391,7 +373,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
  * @return ARSTREAM2_ERROR_BAD_PARAMETERS if the streamSenderHandle or metadata pointer are invalid
  */
 eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSender_Handle streamSenderHandle,
-                                                           const ARSTREAM2_StreamSender_UntimedMetadata_t *metadata, uint32_t sendInterval);
+                                                           const ARSTREAM2_Stream_UntimedMetadata_t *metadata, uint32_t sendInterval);
 
 
 /**
@@ -404,7 +386,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
  * @return ARSTREAM2_ERROR_BAD_PARAMETERS if the streamSenderHandle or metadata pointer are invalid
  */
 eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamSender_Handle streamSenderHandle,
-                                                               ARSTREAM2_StreamSender_UntimedMetadata_t *metadata);
+                                                               ARSTREAM2_Stream_UntimedMetadata_t *metadata);
 
 
 /**

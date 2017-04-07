@@ -766,7 +766,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetDynamicConfig(ARSTREAM2_StreamSender_
 
 
 eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSender_Handle streamSenderHandle,
-                                                           ARSTREAM2_StreamSender_UntimedMetadata_t *metadata, uint32_t *sendInterval)
+                                                           ARSTREAM2_Stream_UntimedMetadata_t *metadata, uint32_t *sendInterval)
 {
     ARSTREAM2_StreamSender_t *streamSender = (ARSTREAM2_StreamSender_t*)streamSenderHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
@@ -784,7 +784,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
         return ARSTREAM2_ERROR_BAD_PARAMETERS;
     }
 
-    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_CNAME_ITEM, NULL, &metadata->canonicalName, &_sendInterval);
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_CNAME_ITEM, NULL, &metadata->serialNumber, &_sendInterval);
     if (_ret == ARSTREAM2_OK)
     {
         if (_sendInterval < minSendInterval)
@@ -794,7 +794,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
     }
     else
     {
-        metadata->canonicalName = NULL;
+        metadata->serialNumber = NULL;
     }
 
     _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_NAME_ITEM, NULL, &metadata->friendlyName, &_sendInterval);
@@ -810,7 +810,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
         metadata->friendlyName = NULL;
     }
 
-    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_TOOL_ITEM, NULL, &metadata->applicationName, &_sendInterval);
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_TOOL_ITEM, NULL, &metadata->softwareVersion, &_sendInterval);
     if (_ret == ARSTREAM2_OK)
     {
         if (_sendInterval < minSendInterval)
@@ -820,7 +820,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
     }
     else
     {
-        metadata->applicationName = NULL;
+        metadata->softwareVersion = NULL;
     }
 
     ptr = NULL;
@@ -903,7 +903,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
         metadata->runDate = NULL;
     }
 
-    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_uuid", &metadata->runUuid, &_sendInterval);
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_id", &metadata->runUuid, &_sendInterval);
     if (_ret == ARSTREAM2_OK)
     {
         if (_sendInterval < minSendInterval)
@@ -916,6 +916,97 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
         metadata->runUuid = NULL;
     }
 
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "maker", &metadata->maker, &_sendInterval);
+    if (_ret == ARSTREAM2_OK)
+    {
+        if (_sendInterval < minSendInterval)
+        {
+            minSendInterval = _sendInterval;
+        }
+    }
+    else
+    {
+        metadata->maker = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model", &metadata->model, &_sendInterval);
+    if (_ret == ARSTREAM2_OK)
+    {
+        if (_sendInterval < minSendInterval)
+        {
+            minSendInterval = _sendInterval;
+        }
+    }
+    else
+    {
+        metadata->model = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model_id", &metadata->modelId, &_sendInterval);
+    if (_ret == ARSTREAM2_OK)
+    {
+        if (_sendInterval < minSendInterval)
+        {
+            minSendInterval = _sendInterval;
+        }
+    }
+    else
+    {
+        metadata->modelId = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "build_id", &metadata->buildId, &_sendInterval);
+    if (_ret == ARSTREAM2_OK)
+    {
+        if (_sendInterval < minSendInterval)
+        {
+            minSendInterval = _sendInterval;
+        }
+    }
+    else
+    {
+        metadata->buildId = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "title", &metadata->title, &_sendInterval);
+    if (_ret == ARSTREAM2_OK)
+    {
+        if (_sendInterval < minSendInterval)
+        {
+            minSendInterval = _sendInterval;
+        }
+    }
+    else
+    {
+        metadata->title = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "comment", &metadata->comment, &_sendInterval);
+    if (_ret == ARSTREAM2_OK)
+    {
+        if (_sendInterval < minSendInterval)
+        {
+            minSendInterval = _sendInterval;
+        }
+    }
+    else
+    {
+        metadata->comment = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "copyright", &metadata->copyright, &_sendInterval);
+    if (_ret == ARSTREAM2_OK)
+    {
+        if (_sendInterval < minSendInterval)
+        {
+            minSendInterval = _sendInterval;
+        }
+    }
+    else
+    {
+        metadata->copyright = NULL;
+    }
+
     if (sendInterval)
     {
         *sendInterval = minSendInterval;
@@ -926,7 +1017,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
 
 
 eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSender_Handle streamSenderHandle,
-                                                           const ARSTREAM2_StreamSender_UntimedMetadata_t *metadata, uint32_t sendInterval)
+                                                           const ARSTREAM2_Stream_UntimedMetadata_t *metadata, uint32_t sendInterval)
 {
     ARSTREAM2_StreamSender_t *streamSender = (ARSTREAM2_StreamSender_t*)streamSenderHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
@@ -948,13 +1039,13 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
         sendInterval = ARSTREAM2_STREAM_SENDER_UNTIMED_METADATA_DEFAULT_SEND_INTERVAL;
     }
 
-    if ((metadata->canonicalName) && (strlen(metadata->canonicalName)))
+    if ((metadata->serialNumber) && (strlen(metadata->serialNumber)))
     {
         ptr = NULL;
         _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_CNAME_ITEM, NULL, &ptr, NULL);
-        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->canonicalName, 256)))
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->serialNumber, 256)))
         {
-            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_CNAME_ITEM, NULL, metadata->canonicalName, sendInterval);
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_CNAME_ITEM, NULL, metadata->serialNumber, sendInterval);
         }
     }
 
@@ -968,13 +1059,13 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
         }
     }
 
-    if ((metadata->applicationName) && (strlen(metadata->applicationName)))
+    if ((metadata->softwareVersion) && (strlen(metadata->softwareVersion)))
     {
         ptr = NULL;
         _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_TOOL_ITEM, NULL, &ptr, NULL);
-        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->applicationName, 256)))
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->softwareVersion, 256)))
         {
-            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_TOOL_ITEM, NULL, metadata->applicationName, sendInterval);
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_TOOL_ITEM, NULL, metadata->softwareVersion, sendInterval);
         }
     }
 
@@ -1064,10 +1155,80 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
     if ((metadata->runUuid) && (strlen(metadata->runUuid)))
     {
         ptr = NULL;
-        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_uuid", &ptr, NULL);
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_id", &ptr, NULL);
         if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->runUuid, 256)))
         {
-            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_uuid", metadata->runUuid, sendInterval);
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_id", metadata->runUuid, sendInterval);
+        }
+    }
+
+    if ((metadata->maker) && (strlen(metadata->maker)))
+    {
+        ptr = NULL;
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "maker", &ptr, NULL);
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->maker, 256)))
+        {
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "maker", metadata->maker, sendInterval);
+        }
+    }
+
+    if ((metadata->model) && (strlen(metadata->model)))
+    {
+        ptr = NULL;
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model", &ptr, NULL);
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->model, 256)))
+        {
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model", metadata->model, sendInterval);
+        }
+    }
+
+    if ((metadata->modelId) && (strlen(metadata->modelId)))
+    {
+        ptr = NULL;
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model_id", &ptr, NULL);
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->modelId, 256)))
+        {
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model_id", metadata->modelId, sendInterval);
+        }
+    }
+
+    if ((metadata->buildId) && (strlen(metadata->buildId)))
+    {
+        ptr = NULL;
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "build_id", &ptr, NULL);
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->buildId, 256)))
+        {
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "build_id", metadata->buildId, sendInterval);
+        }
+    }
+
+    if ((metadata->title) && (strlen(metadata->title)))
+    {
+        ptr = NULL;
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "title", &ptr, NULL);
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->title, 256)))
+        {
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "title", metadata->title, sendInterval);
+        }
+    }
+
+    if ((metadata->comment) && (strlen(metadata->comment)))
+    {
+        ptr = NULL;
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "comment", &ptr, NULL);
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->comment, 256)))
+        {
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "comment", metadata->comment, sendInterval);
+        }
+    }
+
+    if ((metadata->copyright) && (strlen(metadata->copyright)))
+    {
+        ptr = NULL;
+        _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "copyright", &ptr, NULL);
+        if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->copyright, 256)))
+        {
+            ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "copyright", metadata->copyright, sendInterval);
         }
     }
 
@@ -1076,7 +1237,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
 
 
 eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamSender_Handle streamSenderHandle,
-                                                               ARSTREAM2_StreamSender_UntimedMetadata_t *metadata)
+                                                               ARSTREAM2_Stream_UntimedMetadata_t *metadata)
 {
     ARSTREAM2_StreamSender_t *streamSender = (ARSTREAM2_StreamSender_t*)streamSenderHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
@@ -1093,10 +1254,10 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamS
         return ARSTREAM2_ERROR_BAD_PARAMETERS;
     }
 
-    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_CNAME_ITEM, NULL, &metadata->canonicalName);
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_CNAME_ITEM, NULL, &metadata->serialNumber);
     if (_ret != ARSTREAM2_OK)
     {
-        metadata->canonicalName = NULL;
+        metadata->serialNumber = NULL;
     }
 
     _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_NAME_ITEM, NULL, &metadata->friendlyName);
@@ -1105,10 +1266,10 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamS
         metadata->friendlyName = NULL;
     }
 
-    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_TOOL_ITEM, NULL, &metadata->applicationName);
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_TOOL_ITEM, NULL, &metadata->softwareVersion);
     if (_ret != ARSTREAM2_OK)
     {
-        metadata->applicationName = NULL;
+        metadata->softwareVersion = NULL;
     }
 
     ptr = NULL;
@@ -1172,10 +1333,52 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamS
         metadata->runDate = NULL;
     }
 
-    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_uuid", &metadata->runUuid);
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "run_id", &metadata->runUuid);
     if (_ret != ARSTREAM2_OK)
     {
         metadata->runUuid = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "maker", &metadata->maker);
+    if (_ret != ARSTREAM2_OK)
+    {
+        metadata->maker = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model", &metadata->model);
+    if (_ret != ARSTREAM2_OK)
+    {
+        metadata->model = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "model_id", &metadata->modelId);
+    if (_ret != ARSTREAM2_OK)
+    {
+        metadata->modelId = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "build_id", &metadata->buildId);
+    if (_ret != ARSTREAM2_OK)
+    {
+        metadata->buildId = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "title", &metadata->title);
+    if (_ret != ARSTREAM2_OK)
+    {
+        metadata->title = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "comment", &metadata->comment);
+    if (_ret != ARSTREAM2_OK)
+    {
+        metadata->comment = NULL;
+    }
+
+    _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, "copyright", &metadata->copyright);
+    if (_ret != ARSTREAM2_OK)
+    {
+        metadata->copyright = NULL;
     }
 
     return ret;
