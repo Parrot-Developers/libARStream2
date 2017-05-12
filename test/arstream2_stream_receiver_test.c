@@ -19,7 +19,7 @@
 #include <libARCommands/ARCommands.h>
 #include <libARDiscovery/ARDiscovery.h>
 #include <libARStream2/arstream2_stream_receiver.h>
-#include <json/json.h>
+#include <json-c/json.h>
 
 #include "arstream2_stream_receiver_test.h"
 
