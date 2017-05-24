@@ -191,7 +191,7 @@ Java_com_parrot_arsdk_arstream2_ARStream2Receiver_nativeInitClass(JNIEnv *env, j
     {
         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "Unable to find method getBuffer");
     }
-    g_onBufferReady = (*env)->GetMethodID(env, clazz, "onBufferReady", "(IIJIJJJI)I");
+    g_onBufferReady = (*env)->GetMethodID(env, clazz, "onBufferReady", "(IIJIJIJJJIIII)I");
     if (!g_onBufferReady)
     {
         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "Unable to find method onBufferReady");
@@ -370,7 +370,11 @@ static eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_JNI_AuReadyCallback(uint8_t *au
     }
 
     ret = (*env)->CallIntMethod(env, (jobject)userPtr, g_onBufferReady, (jint)(intptr_t)auBufferUserPtr, (jint)auSize,
-                                (jlong)auMetadata->auMetadata, (jint)auMetadata->auMetadataSize, (jlong)auTimestamps->auNtpTimestamp, (jlong)auTimestamps->auNtpTimestampRaw, (jlong)auTimestamps->auNtpTimestampLocal, (jint)auSyncType);
+                                (jlong)auMetadata->auMetadata, (jint)auMetadata->auMetadataSize,
+                                (jlong)auMetadata->auUserData, (jint)auMetadata->auUserDataSize,
+                                (jlong)auTimestamps->auNtpTimestamp, (jlong)auTimestamps->auNtpTimestampRaw,
+                                (jlong)auTimestamps->auNtpTimestampLocal, (jint)auSyncType,
+                                (jint)auMetadata->isComplete, (jint)auMetadata->hasErrors, (jint)auMetadata->isRef);
     if (wasAlreadyAttached == 0)
     {
         (*g_vm)->DetachCurrentThread(g_vm);
