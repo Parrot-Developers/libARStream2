@@ -838,7 +838,7 @@ static int ARSTREAM2_RTPH264_Receiver_StapAPacket(ARSTREAM2_RTPH264_ReceiverCont
         /* next NALU */
         if (sizeLeft >= 2)
         {
-            naluSize = ((uint16_t)(*packetBuf) << 8) | ((uint16_t)(*(packetBuf + 1)));
+            naluSize = (((uint16_t)(*packetBuf) << 8) & 0xFF00) | (((uint16_t)(*(packetBuf + 1))) & 0x00FF);
             packetBuf += 2;
             sizeLeft -= 2;
         }
@@ -857,7 +857,7 @@ static int ARSTREAM2_RTPH264_Receiver_BeginFuAPackets(ARSTREAM2_RTPH264_Receiver
                                                        ARSTREAM2_RTP_Packet_t *packet,
                                                        uint32_t missingPacketsBefore)
 {
-    int ret = 0;
+    int ret = 0, err;
 
     if (!context->auItem)
     {
@@ -877,6 +877,22 @@ static int ARSTREAM2_RTPH264_Receiver_BeginFuAPackets(ARSTREAM2_RTPH264_Receiver
     if (context->fuNaluItem)
     {
         ARSTREAM2_H264_NaluReset(&context->fuNaluItem->nalu);
+        if (context->startCodeLength > 0)
+        {
+            err = ARSTREAM2_H264_AuCheckSizeRealloc(&context->auItem->au, context->startCodeLength);
+            if (err != 0)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "Access unit buffer is too small");
+                err = ARSTREAM2_H264_AuNaluFifoPushFreeItem(&context->auItem->au, context->fuNaluItem);
+                if (err < 0)
+                {
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "Failed to push free FIFO item");
+                }
+                context->fuNaluItem = NULL;
+                return -1;
+            }
+        }
+
         context->fuNaluItem->nalu.nalu = context->auItem->au.buffer->auBuffer + context->auItem->au.auSize;
         context->fuNaluItem->nalu.naluSize = 0;
 
@@ -923,11 +939,29 @@ static int ARSTREAM2_RTPH264_Receiver_AppendPacketToFuA(ARSTREAM2_RTPH264_Receiv
         return -1;
     }
 
-    err = ARSTREAM2_H264_AuCheckSizeRealloc(&context->auItem->au, ((isFirst) ? context->startCodeLength : 0) + packetSize);
+    uint8_t *oldPtr = context->auItem->au.buffer->auBuffer;
+    err = ARSTREAM2_H264_AuCheckSizeRealloc(&context->auItem->au, packetSize);
     if (err != 0)
     {
         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "Access unit buffer is too small");
         return -1;
+    }
+    uint8_t *newPtr = context->auItem->au.buffer->auBuffer;
+
+    if (newPtr != oldPtr)
+    {
+        /* translate the current FU-A NALU pointer to the new AU buffer */
+        unsigned int offset = (unsigned int)(context->fuNaluItem->nalu.nalu - oldPtr);
+        if (offset < context->auItem->au.buffer->auBufferSize)
+        {
+            context->fuNaluItem->nalu.nalu = newPtr + offset;
+        }
+        else
+        {
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "Invalid NALU offset in AU buffer (%d)", offset);
+            context->fuNaluItem->nalu.nalu = NULL;
+            return -1;
+        }
     }
 
     /* NALU data */

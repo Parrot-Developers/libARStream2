@@ -1247,15 +1247,35 @@ int ARSTREAM2_H264_AuCheckSizeRealloc(ARSTREAM2_H264_AccessUnit_t *au, unsigned 
     if (au->auSize + size > au->buffer->auBufferSize)
     {
         unsigned int newSize = au->auSize + size;
-        if (newSize < au->buffer->auBufferSize + ARSTREAM2_H264_AU_MIN_REALLOC_SIZE) newSize = au->buffer->auBufferSize + ARSTREAM2_H264_AU_MIN_REALLOC_SIZE;
-        au->buffer->auBuffer = realloc(au->buffer->auBuffer, newSize);
-        if (au->buffer->auBuffer == NULL)
+        uint8_t *newPtr;
+        if (newSize < au->buffer->auBufferSize + ARSTREAM2_H264_AU_MIN_REALLOC_SIZE)
+            newSize = au->buffer->auBufferSize + ARSTREAM2_H264_AU_MIN_REALLOC_SIZE;
+        newPtr = realloc(au->buffer->auBuffer, newSize);
+        if (newPtr == NULL)
         {
             ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_TAG, "Access unit realloc failed (size %u)", newSize);
             return -1;
         }
         else
         {
+            /* translate all NALU pointers to the new AU buffer */
+            ARSTREAM2_H264_NaluFifoItem_t *naluItem;
+            for (naluItem = au->naluHead; naluItem; naluItem = naluItem->next)
+            {
+                unsigned int offset = (unsigned int)(naluItem->nalu.nalu - au->buffer->auBuffer);
+                if (offset < newSize)
+                {
+                    naluItem->nalu.nalu = newPtr + offset;
+                }
+                else
+                {
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_TAG, "Invalid NALU offset in AU buffer (%d)", offset);
+                    naluItem->nalu.nalu = NULL;
+                    return -1;
+                }
+            }
+
+            au->buffer->auBuffer = newPtr;
             au->buffer->auBufferSize = newSize;
         }
     }

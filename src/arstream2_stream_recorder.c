@@ -686,11 +686,23 @@ eARSTREAM2_ERROR ARSTREAM2_StreamRecorder_SetUntimedMetadata(ARSTREAM2_StreamRec
 #if BUILD_LIBARMEDIA
     ARMEDIA_Untimed_Metadata_t meta;
     memset(&meta, 0, sizeof(ARMEDIA_Untimed_Metadata_t));
-    if (metadata->makerAndModel)
+    if (metadata->maker)
     {
-        snprintf(meta.makerAndModel,
+        snprintf(meta.maker,
                  ARMEDIA_ENCAPSULER_UNTIMED_METADATA_MAKER_SIZE,
-                 "%s", metadata->makerAndModel);
+                 "%s", metadata->maker);
+    }
+    if (metadata->model)
+    {
+        snprintf(meta.model,
+                 ARMEDIA_ENCAPSULER_UNTIMED_METADATA_MODEL_SIZE,
+                 "%s", metadata->model);
+    }
+    if (metadata->modelId)
+    {
+        snprintf(meta.modelId,
+                 ARMEDIA_ENCAPSULER_UNTIMED_METADATA_MODEL_ID_SIZE,
+                 "%s", metadata->modelId);
     }
     if (metadata->serialNumber)
     {
@@ -703,6 +715,36 @@ eARSTREAM2_ERROR ARSTREAM2_StreamRecorder_SetUntimedMetadata(ARSTREAM2_StreamRec
         snprintf(meta.softwareVersion,
                  ARMEDIA_ENCAPSULER_UNTIMED_METADATA_SOFT_VER_SIZE,
                  "%s", metadata->softwareVersion);
+    }
+    if (metadata->buildId)
+    {
+        snprintf(meta.buildId,
+                 ARMEDIA_ENCAPSULER_UNTIMED_METADATA_BUILD_ID_SIZE,
+                 "%s", metadata->buildId);
+    }
+    if (metadata->artist)
+    {
+        snprintf(meta.artist,
+                 ARMEDIA_ENCAPSULER_UNTIMED_METADATA_ARTIST_SIZE,
+                 "%s", metadata->artist);
+    }
+    if (metadata->title)
+    {
+        snprintf(meta.title,
+                 ARMEDIA_ENCAPSULER_UNTIMED_METADATA_TITLE_SIZE,
+                 "%s", metadata->title);
+    }
+    if (metadata->comment)
+    {
+        snprintf(meta.comment,
+                 ARMEDIA_ENCAPSULER_UNTIMED_METADATA_COMMENT_SIZE,
+                 "%s", metadata->comment);
+    }
+    if (metadata->copyright)
+    {
+        snprintf(meta.copyright,
+                 ARMEDIA_ENCAPSULER_UNTIMED_METADATA_COPYRIGHT_SIZE,
+                 "%s", metadata->copyright);
     }
     if (metadata->mediaDate)
     {
