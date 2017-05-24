@@ -263,10 +263,26 @@ static int ARSTREAM2_H264Filter_ParseNalu(ARSTREAM2_H264Filter_t *filter, ARSTRE
                                     filter->currentAuStreamingSliceCount = filter->currentAuStreamingInfoV1.sliceCount;
                                 }
                             }
-                            else if (userDataSeiSize <= au->buffer->userDataBufferSize)
+                            else
                             {
-                                memcpy(au->buffer->userDataBuffer, pUserDataSei, userDataSeiSize);
-                                au->userDataSize = userDataSeiSize;
+                                if (userDataSeiSize > au->buffer->userDataBufferSize)
+                                {
+                                    uint8_t *newPtr = realloc(au->buffer->userDataBuffer, userDataSeiSize);
+                                    if (newPtr == NULL)
+                                    {
+                                        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_TAG, "Reallocation failed for user data SEI (size %d)", userDataSeiSize);
+                                    }
+                                    else
+                                    {
+                                        au->buffer->userDataBuffer = newPtr;
+                                        au->buffer->userDataBufferSize = userDataSeiSize;
+                                    }
+                                }
+                                if (userDataSeiSize <= au->buffer->userDataBufferSize)
+                                {
+                                    memcpy(au->buffer->userDataBuffer, pUserDataSei, userDataSeiSize);
+                                    au->userDataSize = userDataSeiSize;
+                                }
                             }
                         }
                     }
