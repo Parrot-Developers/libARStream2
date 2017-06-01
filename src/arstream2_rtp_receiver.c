@@ -970,6 +970,7 @@ ARSTREAM2_RtpReceiver_t* ARSTREAM2_RtpReceiver_New(ARSTREAM2_RtpReceiver_Config_
             retReceiver->rtcpReceiverContext.sdesItemCount++;
         }
         retReceiver->rtcpReceiverContext.videoStatsCtx.sendTimeInterval = config->videoStatsSendTimeInterval;
+        retReceiver->rtcpReceiverContext.lossReportCtx.sendTimeInterval = config->lossReportSendTimeInterval;
 
         if (retReceiver->rtpReceiverContext.maxPacketSize < sizeof(ARSTREAM2_RTCP_ReceiverReport_t) + sizeof(ARSTREAM2_RTCP_ReceptionReportBlock_t))
         {
@@ -1172,6 +1173,7 @@ eARSTREAM2_ERROR ARSTREAM2_RtpReceiver_Delete(ARSTREAM2_RtpReceiver_t **receiver
         free((*receiver)->applicationName);
         free((*receiver)->net.serverAddr);
         free((*receiver)->net.mcastIfaceAddr);
+        free((*receiver)->rtcpReceiverContext.lossReportCtx.receivedFlag);
 
 #if BUILD_LIBMUX
         if ((*receiver)->mux.mux)
@@ -1377,6 +1379,7 @@ eARSTREAM2_ERROR ARSTREAM2_RtpReceiver_ProcessRtcp(ARSTREAM2_RtpReceiver_t *rece
         {
             unsigned int size = 0;
             int generateVideoStats = 0;
+            int generateLossReport = 0;
 
             if ((receiver->rtcpReceiverContext.videoStatsCtx.updatedSinceLastTime)
                     && (receiver->rtcpReceiverContext.videoStatsCtx.sendTimeInterval > 0)
@@ -1388,8 +1391,16 @@ eARSTREAM2_ERROR ARSTREAM2_RtpReceiver_ProcessRtcp(ARSTREAM2_RtpReceiver_t *rece
                 receiver->rtcpReceiverContext.videoStatsCtx.updatedSinceLastTime = 0;
             }
 
+            if ((receiver->rtcpReceiverContext.lossReportCtx.sendTimeInterval > 0)
+                    && ((receiver->rtcpReceiverContext.lossReportCtx.lastSendTime == 0)
+                        || (curTime >= receiver->rtcpReceiverContext.lossReportCtx.lastSendTime + receiver->rtcpReceiverContext.lossReportCtx.sendTimeInterval)))
+            {
+                generateLossReport = 1;
+                receiver->rtcpReceiverContext.lossReportCtx.lastSendTime = curTime;
+            }
+
             ret = ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(receiver->rtcpMsgBuffer, receiver->rtpReceiverContext.maxPacketSize,
-                                                                 curTime, 1, 1, 1, generateVideoStats, &receiver->rtcpReceiverContext, &size);
+                                                                 curTime, 1, 1, 1, generateVideoStats, generateLossReport, &receiver->rtcpReceiverContext, &size);
             if ((ret == 0) && (size > 0))
             {
                 receiver->rtcpDropStatsTotalPackets++;

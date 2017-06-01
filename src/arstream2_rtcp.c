@@ -715,6 +715,480 @@ int ARSTREAM2_RTCP_ProcessSourceDescription(const uint8_t *buffer, unsigned int 
 }
 
 
+int ARSTREAM2_RTCP_LossReportReset(ARSTREAM2_RTCP_LossReportContext_t *context)
+{
+    if (!context)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid pointer");
+        return -1;
+    }
+
+    context->count = 0;
+    if ((context->receivedFlag) && (context->wordCount))
+    {
+        memset(context->receivedFlag, 0, context->wordCount * sizeof(uint32_t));
+    }
+
+    return 0;
+}
+
+
+int ARSTREAM2_RTCP_LossReportSet(ARSTREAM2_RTCP_LossReportContext_t *context, uint32_t extSeqNum)
+{
+    if (!context)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid pointer");
+        return -1;
+    }
+
+    /* NB: out of order packets are not supported for startSeqNum, LossReportSet() must be called after reordering */
+    if (context->count == 0)
+    {
+        context->startSeqNum = context->endSeqNum = extSeqNum;
+    }
+
+    int packetCount = (int)context->endSeqNum - (int)context->startSeqNum + 1;
+    if (packetCount <= 0)
+        packetCount += (1 << 16);
+    if (packetCount >= 65534)
+    {
+        /* Loss RLE blocks cannot account for more than 65534 packets (RFC3611) */
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Loss report packet count is too large (%d), resetting", packetCount);
+        ARSTREAM2_RTCP_LossReportReset(context);
+        return -1;
+    }
+
+    /* Realloc the receivedFlag buffer if necessary */
+    if ((!context->receivedFlag) || ((int)extSeqNum - (int)context->startSeqNum >= context->wordCount * 32))
+    {
+        if (context->wordCount == 0)
+        {
+            context->wordCount = ARSTREAM2_RTCP_LOSS_REPORT_INITIAL_WORD_COUNT;
+        }
+        else
+        {
+            context->wordCount *= 2;
+            if (context->wordCount > 65536 / 32)
+            {
+                /* Loss RLE blocks cannot account for more than 65534 packets (RFC3611)
+                 * so there is no need to realloc with more than 65536 / 32 words */
+                context->wordCount = 65536 / 32;
+            }
+        }
+        uint32_t *receivedFlag = realloc(context->receivedFlag, context->wordCount * sizeof(uint32_t));
+        if (!receivedFlag)
+        {
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Allocation failed (size %zu)", context->wordCount * sizeof(uint32_t));
+            free(context->receivedFlag);
+            context->receivedFlag = NULL;
+            context->wordCount = 0;
+            ARSTREAM2_RTCP_LossReportReset(context);
+            return -1;
+        }
+        else
+        {
+            context->receivedFlag = receivedFlag;
+        }
+    }
+
+    if (extSeqNum > context->endSeqNum)
+    {
+        context->endSeqNum = extSeqNum;
+    }
+
+    int wordIdx = (extSeqNum - context->startSeqNum) >> 5;
+    int bitIdx = 31 - ((extSeqNum - context->startSeqNum) & 0x1F);
+    context->receivedFlag[wordIdx] |= (1 << bitIdx);
+    context->count++;
+
+    return 0;
+}
+
+
+int ARSTREAM2_RTCP_GenerateExtendedReport(ARSTREAM2_RTCP_ExtendedReport_t *xr, ARSTREAM2_RTCP_LossRleReportBlock_t *lossRle,
+                                          unsigned int maxSize, uint64_t sendTimestamp, uint32_t receiverSsrc, uint32_t senderSsrc,
+                                          ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx, unsigned int *size)
+{
+    unsigned int _size = 0, chunkCount = 0;
+
+    if (!lossReportCtx)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid pointer");
+        return -1;
+    }
+
+    if (!lossRle)
+    {
+        /* Nothing to do */
+        if (size)
+            *size = _size;
+
+        return 0;
+    }
+
+    _size += sizeof(ARSTREAM2_RTCP_ExtendedReport_t);
+    if (_size > maxSize)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+        return -1;
+    }
+
+    xr->flags = (2 << 6);
+    xr->packetType = ARSTREAM2_RTCP_EXTENDED_REPORT_PACKET_TYPE;
+    xr->ssrc = htonl(receiverSsrc);
+
+    if (lossRle)
+    {
+        _size += sizeof(ARSTREAM2_RTCP_LossRleReportBlock_t);
+        if (_size > maxSize)
+        {
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+            return -1;
+        }
+
+        lossRle->blockType = ARSTREAM2_RTCP_LOSS_RLE_REPORT_BLOCK_TYPE;
+        lossRle->thinning = 0;
+        lossRle->ssrc = htonl(senderSsrc);
+        lossRle->beginSeq = htons(lossReportCtx->startSeqNum & 0xFFFF);
+        lossRle->endSeq = htons((lossReportCtx->endSeqNum & 0xFFFF) + 1);
+
+        int i, j, k, packetCount = lossReportCtx->endSeqNum - lossReportCtx->startSeqNum + 1, wordCount = (packetCount >> 5) + ((packetCount & 0x1F) ? 1 : 0), chunkBitIdx = 14;
+        uint16_t chunk = 0;
+        int bitVal, runLength = 0, runBit = -1;
+        for (i = 0, k = 0; i < wordCount; i++)
+        {
+            if (k == packetCount)
+            {
+                break;
+            }
+            for (j = 0; j < 32; j++, k++)
+            {
+                if (k == packetCount)
+                {
+                    break;
+                }
+
+                /* Dynamically choose between bit vector chunks and run length chunks in a single loop */
+                bitVal = ((lossReportCtx->receivedFlag[i] >> (31 - j)) & 1);
+                if (runBit == -1)
+                {
+                    /* Start new run */
+                    runBit = bitVal;
+                    runLength = 1;
+                }
+                else if (bitVal == runBit)
+                {
+                    /* Continue run */
+                    runLength++;
+                }
+                else
+                {
+                    /* End run */
+                    if (runLength >= 16)
+                    {
+                        /* Choose run length chunk */
+                        if (_size + chunkCount * 2 + 2 > maxSize)
+                        {
+                            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+                            return -1;
+                        }
+                        *((uint16_t*)lossRle + 6 + chunkCount) = htons((runBit << 14) | (runLength & 0x3FFF));
+                        chunkCount++;
+
+                        /* Reset the bit vector chunk */
+                        chunkBitIdx = 14;
+                        chunk = 0;
+                    }
+
+                    /* Start new run */
+                    runBit = bitVal;
+                    runLength = 1;
+                }
+                if (chunkBitIdx >= 0)
+                {
+                    chunk |= (bitVal << chunkBitIdx);
+                }
+                chunkBitIdx--;
+                if ((chunkBitIdx < 0) && ((runBit == -1) || (runLength < 16)))
+                {
+                    /* Choose bit vector chunk */
+                    if (_size + chunkCount * 2 + 2 > maxSize)
+                    {
+                        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+                        return -1;
+                    }
+                    *((uint16_t*)lossRle + 6 + chunkCount) = htons(0x8000 | chunk);
+                    chunkCount++;
+
+                    /* Reset the bit vector chunk and the run */
+                    chunkBitIdx = 14;
+                    chunk = 0;
+                    runBit = -1;
+                }
+            }
+        }
+        if ((runBit != -1) && (runLength >= 16))
+        {
+            /* Write the last run length chunk */
+            if (_size + chunkCount * 2 + 2 > maxSize)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+                return -1;
+            }
+            *((uint16_t*)lossRle + 6 + chunkCount) = htons((runBit << 14) | (runLength & 0x3FFF));
+            chunkCount++;
+        }
+        else if (chunkBitIdx < 14)
+        {
+            /* Write the last bit vector chunk */
+            if (_size + chunkCount * 2 + 2 > maxSize)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+                return -1;
+            }
+            *((uint16_t*)lossRle + 6 + chunkCount) = htons(0x8000 | chunk);
+            chunkCount++;
+        }
+
+        if (chunkCount & 1)
+        {
+            /* Odd count: write a terminating null chunk */
+            if (_size + chunkCount * 2 + 2 > maxSize)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Buffer is too small for XR");
+                return -1;
+            }
+            *((uint16_t*)lossRle + 6 + chunkCount) = 0;
+            chunkCount++;
+        }
+
+        lossRle->length = htons((sizeof(ARSTREAM2_RTCP_LossRleReportBlock_t) + chunkCount * 2) / 4 - 1);
+        _size += chunkCount * 2;
+
+        int err = ARSTREAM2_RTCP_LossReportReset(lossReportCtx);
+        if (err != 0)
+        {
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "ARSTREAM2_RTCP_LossReportReset() failed (%d)", err);
+        }
+    }
+
+    xr->length = htons(_size / 4 - 1);
+
+    if (size)
+        *size = _size;
+
+    return 0;
+}
+
+
+int ARSTREAM2_RTCP_ProcessExtendedReport(const uint8_t *buffer, unsigned int bufferSize,
+                                         uint64_t receptionTimestamp, uint32_t receiverSsrc, uint32_t senderSsrc,
+                                         ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx, int *gotLossReport)
+{
+    const ARSTREAM2_RTCP_ExtendedReport_t *xr = (const ARSTREAM2_RTCP_ExtendedReport_t*)buffer;
+    int ret = 0;
+
+    if (gotLossReport)
+    {
+        *gotLossReport = 0;
+    }
+
+    if ((!buffer) || (!lossReportCtx))
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid pointer");
+        return -1;
+    }
+    if (bufferSize < sizeof(ARSTREAM2_RTCP_ExtendedReport_t))
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid buffer size");
+        return -1;
+    }
+
+    uint8_t version = (xr->flags >> 6) & 0x3;
+    if (version != 2)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid extended report packet protocol version (%d)", version);
+        return -1;
+    }
+
+    if (xr->packetType != ARSTREAM2_RTCP_EXTENDED_REPORT_PACKET_TYPE)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid extended report packet type (%d)", xr->packetType);
+        return -1;
+    }
+
+    uint32_t ssrc = ntohl(xr->ssrc);
+    if (ssrc != receiverSsrc)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTCP_TAG, "Unexpected peer SSRC");
+        return -1;
+    }
+
+    uint16_t length = ntohs(xr->length);
+    if ((unsigned int)length * 4 + 4 > bufferSize)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid length (%d -> %d bytes) for %d bytes buffer size", length, (unsigned int)length * 4 + 4, bufferSize);
+        return -1;
+    }
+    if (length < sizeof(ARSTREAM2_RTCP_ExtendedReport_t) / 4 - 1)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid extended report packet length (%d)", length);
+        return -1;
+    }
+
+    uint16_t processedLen = sizeof(ARSTREAM2_RTCP_ExtendedReport_t) / 4 - 1;
+    while (processedLen < length)
+    {
+        if (*(buffer + processedLen * 4 + 4) == ARSTREAM2_RTCP_LOSS_RLE_REPORT_BLOCK_TYPE)
+        {
+            const ARSTREAM2_RTCP_LossRleReportBlock_t *lossRle = (const ARSTREAM2_RTCP_LossRleReportBlock_t*)(buffer + processedLen * 4 + 4);
+
+            if (bufferSize - (processedLen * 4 + 4) < sizeof(ARSTREAM2_RTCP_LossRleReportBlock_t))
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid buffer size");
+                ret = -1;
+                break;
+            }
+
+            if (lossRle->thinning != 0)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTCP_TAG, "Thinning is not supported");
+                ret = -1;
+                break;
+            }
+
+            uint32_t ssrc2 = ntohl(lossRle->ssrc);
+            if (ssrc2 != senderSsrc)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTCP_TAG, "Unexpected sender SSRC");
+                ret = -1;
+                break;
+            }
+
+            uint16_t blockLen = ntohs(lossRle->length);
+            if ((unsigned int)blockLen * 4 + 4 > bufferSize - (processedLen * 4 + 4))
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid length (%d -> %d bytes) for %d bytes remaining buffer size", blockLen, (unsigned int)blockLen * 4 + 4, bufferSize - (processedLen * 4 + 4));
+                ret = -1;
+                break;
+            }
+            if (blockLen < sizeof(ARSTREAM2_RTCP_LossRleReportBlock_t) / 4 - 1)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Invalid loss RLE block length (%d)", blockLen);
+                ret = -1;
+                break;
+            }
+
+            uint16_t beginSeq = ntohs(lossRle->beginSeq);
+            uint16_t endSeq = ntohs(lossRle->endSeq);
+
+            lossReportCtx->startSeqNum = beginSeq;
+            lossReportCtx->endSeqNum = endSeq;
+            if (endSeq < beginSeq)
+            {
+                lossReportCtx->endSeqNum += 65536;
+            }
+            lossReportCtx->endSeqNum--;
+            lossReportCtx->count = lossReportCtx->endSeqNum - lossReportCtx->startSeqNum + 1;
+
+            /* Realloc the receivedFlag buffer if necessary */
+            if ((!lossReportCtx->receivedFlag) || (lossReportCtx->count >= lossReportCtx->wordCount * 32))
+            {
+                if (lossReportCtx->wordCount == 0)
+                {
+                    lossReportCtx->wordCount = ARSTREAM2_RTCP_LOSS_REPORT_INITIAL_WORD_COUNT;
+                }
+                else
+                {
+                    lossReportCtx->wordCount *= 2;
+                    if (lossReportCtx->wordCount >= 65536 / 32)
+                    {
+                        /* Loss RLE blocks cannot account for more than 65534 packets (RFC3611) */
+                        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Word count is too large (%d), resetting", lossReportCtx->wordCount);
+                        ARSTREAM2_RTCP_LossReportReset(lossReportCtx);
+                        return -1;
+                    }
+                }
+                uint32_t *receivedFlag = realloc(lossReportCtx->receivedFlag, lossReportCtx->wordCount * sizeof(uint32_t));
+                if (!receivedFlag)
+                {
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Allocation failed (size %zu)", lossReportCtx->wordCount * sizeof(uint32_t));
+                    free(lossReportCtx->receivedFlag);
+                    lossReportCtx->receivedFlag = NULL;
+                    lossReportCtx->wordCount = 0;
+                    ARSTREAM2_RTCP_LossReportReset(lossReportCtx);
+                    return -1;
+                }
+                else
+                {
+                    lossReportCtx->receivedFlag = receivedFlag;
+                }
+            }
+
+            ret = ARSTREAM2_RTCP_LossReportReset(lossReportCtx);
+            if (ret != 0)
+            {
+                ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTCP_TAG, "ARSTREAM2_RTCP_LossReportReset() failed (%d)", ret);
+                ret = -1;
+                break;
+            }
+            lossReportCtx->count = lossReportCtx->endSeqNum - lossReportCtx->startSeqNum + 1;
+
+            int i, j, k, chunkCount = (blockLen - 2) * 2;
+            uint16_t *chunkPtr = (uint16_t*)lossRle + 6;
+            uint16_t chunk;
+            for (i = 0, k = 0; i < chunkCount; i++, chunkPtr++)
+            {
+                if (k >= lossReportCtx->count)
+                {
+                    break;
+                }
+                chunk = htons(*chunkPtr);
+                if ((chunk & 0x8000) == 0x8000)
+                {
+                    /* Bit vector chunk */
+                    for (j = 0; j < 15; j++, k++)
+                    {
+                        if (k >= lossReportCtx->count)
+                        {
+                            break;
+                        }
+                        int wordIdx = k >> 5;
+                        int bitIdx = 31 - (k & 0x1F);
+                        lossReportCtx->receivedFlag[wordIdx] |= (((chunk >> (14 - j)) & 1) << bitIdx);
+                    }
+                }
+                else
+                {
+                    /* Run length chunk */
+                    int bitVal = ((chunk >> 14) & 1), len = (chunk & 0x3FFF);
+                    /* if len == 0 this is in fact a terminating null chunk */
+                    for (j = 0; j < len; j++, k++)
+                    {
+                        if (k >= lossReportCtx->count)
+                        {
+                            break;
+                        }
+                        int wordIdx = k >> 5;
+                        int bitIdx = 31 - (k & 0x1F);
+                        lossReportCtx->receivedFlag[wordIdx] |= (bitVal << bitIdx);
+                    }
+                }
+            }
+
+            lossReportCtx->lastReceptionTimestamp = receptionTimestamp;
+            if (gotLossReport)
+            {
+                *gotLossReport = 1;
+            }
+        }
+        processedLen += ntohs(*((uint16_t*)(buffer + processedLen * 4 + 4 + 2))) + 1;
+    }
+
+    return ret;
+}
+
+
 int ARSTREAM2_RTCP_GetApplicationPacketSubtype(const uint8_t *buffer, unsigned int bufferSize)
 {
     const ARSTREAM2_RTCP_Application_t *app = (const ARSTREAM2_RTCP_Application_t*)buffer;
@@ -1295,8 +1769,8 @@ int ARSTREAM2_RTCP_Sender_GenerateCompoundPacket(uint8_t *packet, unsigned int m
 int ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(uint8_t *packet, unsigned int maxPacketSize,
                                                    uint64_t sendTimestamp, int generateReceiverReport,
                                                    int generateSourceDescription, int generateApplicationClockDelta,
-                                                   int generateApplicationVideoStats, ARSTREAM2_RTCP_ReceiverContext_t *context,
-                                                   unsigned int *size)
+                                                   int generateApplicationVideoStats, int generateLossReport,
+                                                   ARSTREAM2_RTCP_ReceiverContext_t *context, unsigned int *size)
 {
     int ret = 0;
     unsigned int totalSize = 0;
@@ -1326,6 +1800,23 @@ int ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(uint8_t *packet, unsigned int
         else
         {
             totalSize += rrSize;
+        }
+    }
+
+    if ((ret == 0) && (generateLossReport))
+    {
+        unsigned int extendedReportSize = 0;
+        ret = ARSTREAM2_RTCP_GenerateExtendedReport((ARSTREAM2_RTCP_ExtendedReport_t*)(packet + totalSize),
+                                                    (ARSTREAM2_RTCP_LossRleReportBlock_t*)(packet + totalSize + sizeof(ARSTREAM2_RTCP_ExtendedReport_t)),
+                                                    maxPacketSize - totalSize, sendTimestamp, context->receiverSsrc, context->senderSsrc,
+                                                    &context->lossReportCtx, &extendedReportSize);
+        if (ret != 0)
+        {
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Failed to generate extended report (%d)", ret);
+        }
+        else
+        {
+            totalSize += extendedReportSize;
         }
     }
 
@@ -1389,7 +1880,7 @@ int ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(uint8_t *packet, unsigned int
 int ARSTREAM2_RTCP_Sender_ProcessCompoundPacket(const uint8_t *buffer, unsigned int bufferSize,
                                                 uint64_t receptionTimestamp,
                                                 ARSTREAM2_RTCP_SenderContext_t *context,
-                                                int *gotReceptionReport, int *gotVideoStats)
+                                                int *gotReceptionReport, int *gotVideoStats, int *gotLossReport)
 {
     unsigned int readSize = 0, size = 0;
     int receptionReportCount = 0, type, subType, ret, _ret = 0;
@@ -1427,6 +1918,14 @@ int ARSTREAM2_RTCP_Sender_ProcessCompoundPacket(const uint8_t *buffer, unsigned 
                                     context->receiverLostCount, (float)context->receiverFractionLost * 100. / 256.,
                                     context->receiverExtHighestSeqNum);*/
                     }
+                }
+                break;
+            case ARSTREAM2_RTCP_EXTENDED_REPORT_PACKET_TYPE:
+                ret = ARSTREAM2_RTCP_ProcessExtendedReport(buffer, bufferSize - readSize, receptionTimestamp,
+                                                           context->receiverSsrc, context->senderSsrc, &context->lossReportCtx, gotLossReport);
+                if (ret != 0)
+                {
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTCP_TAG, "Failed to process extended report (%d)", ret);
                 }
                 break;
             case ARSTREAM2_RTCP_SDES_PACKET_TYPE:

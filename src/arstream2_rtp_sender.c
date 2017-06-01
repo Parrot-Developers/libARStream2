@@ -892,6 +892,7 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_Delete(ARSTREAM2_RtpSender_t **sender)
         {
             fclose((*sender)->fMonitorOut);
         }
+        free((*sender)->rtcpSenderContext.lossReportCtx.receivedFlag);
         free(*sender);
         *sender = NULL;
         retVal = ARSTREAM2_OK;
@@ -1191,10 +1192,11 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
         {
             int gotReceptionReport = 0;
             int gotVideoStats = 0;
+            int gotLossReport = 0;
 
             ret = ARSTREAM2_RTCP_Sender_ProcessCompoundPacket(sender->rtcpMsgBuffer, (unsigned int)bytes,
                                                               curTime, &sender->rtcpSenderContext,
-                                                              &gotReceptionReport, &gotVideoStats);
+                                                              &gotReceptionReport, &gotVideoStats, &gotLossReport);
             if ((ret != 0) && (bytes != 24)) /* workaround to avoid logging when it's an old clockSync packet with old FF or SC versions */
             {
                 ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_SENDER_TAG, "Failed to process compound RTCP packet (%d)", ret);

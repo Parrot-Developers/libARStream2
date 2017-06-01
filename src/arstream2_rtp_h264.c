@@ -1071,6 +1071,11 @@ int ARSTREAM2_RTPH264_Receiver_PacketFifoToAuFifo(ARSTREAM2_RTPH264_ReceiverCont
                         rtcpContext->packetsLost += missingPacketsBefore;
                         rtcpContext->packetsReceived -= missingPacketsBefore;
                     }
+                    err = ARSTREAM2_RTCP_LossReportSet(&rtcpContext->lossReportCtx, packet->extSeqNum);
+                    if (err != 0)
+                    {
+                        ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTPH264_TAG, "ARSTREAM2_RTCP_LossReportSet() failed (%d)", err);
+                    }
 
                     /* AU change detection */
                     if ((ret == 0) && (context->auItem != NULL) && (context->previousDepayloadExtRtpTimestamp != 0)

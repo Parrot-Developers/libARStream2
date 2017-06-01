@@ -97,6 +97,7 @@ typedef struct ARSTREAM2_RtpReceiver_Config_t
     int insertStartCodes;                           /**< Boolean-like (0-1) flag: if active insert a start code prefix before NAL units */
     int generateReceiverReports;                    /**< Boolean-like (0-1) flag: if active generate RTCP receiver reports */
     uint32_t videoStatsSendTimeInterval;            /**< Time interval for sending video stats in compound RTCP packets (optional, can be null) */
+    uint32_t lossReportSendTimeInterval;            /**< Time interval for sending loss reports in compound RTCP packets (optional, can be null) */
 } ARSTREAM2_RtpReceiver_Config_t;
 
 

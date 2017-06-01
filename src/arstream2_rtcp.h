@@ -21,6 +21,7 @@
 #define ARSTREAM2_RTCP_SDES_PACKET_TYPE 202
 #define ARSTREAM2_RTCP_BYE_PACKET_TYPE 203
 #define ARSTREAM2_RTCP_APP_PACKET_TYPE 204
+#define ARSTREAM2_RTCP_EXTENDED_REPORT_PACKET_TYPE 207
 
 #define ARSTREAM2_RTCP_SDES_CNAME_ITEM 1
 #define ARSTREAM2_RTCP_SDES_NAME_ITEM 2
@@ -41,6 +42,9 @@
 #define ARSTREAM2_RTCP_RECEIVER_BANDWIDTH_SHARE 0.025
 #define ARSTREAM2_RTCP_SENDER_MIN_PACKET_TIME_INTERVAL 100000
 #define ARSTREAM2_RTCP_RECEIVER_MIN_PACKET_TIME_INTERVAL 100000
+
+#define ARSTREAM2_RTCP_LOSS_REPORT_INITIAL_WORD_COUNT 32
+#define ARSTREAM2_RTCP_LOSS_RLE_REPORT_BLOCK_TYPE 1
 
 #define ARSTREAM2_RTCP_VIDEOSTATS_VERSION (1)
 
@@ -117,6 +121,28 @@ typedef struct {
 } __attribute__ ((packed)) ARSTREAM2_RTCP_Goodbye_t;
 
 /**
+ * @brief RTCP Extended Report (XR) Packet (see RFC3611)
+ */
+typedef struct {
+    uint8_t flags;
+    uint8_t packetType;
+    uint16_t length;
+    uint32_t ssrc;
+} __attribute__ ((packed)) ARSTREAM2_RTCP_ExtendedReport_t;
+
+/**
+ * @brief RTCP Extended - Loss RLE Report Block (see RFC3611)
+ */
+typedef struct {
+    uint8_t blockType;
+    uint8_t thinning;
+    uint16_t length;
+    uint32_t ssrc;
+    uint16_t beginSeq;
+    uint16_t endSeq;
+} __attribute__ ((packed)) ARSTREAM2_RTCP_LossRleReportBlock_t;
+
+/**
  * @brief RTCP Application-Defined (APP) Packet (see RFC3550)
  */
 typedef struct {
@@ -185,6 +211,22 @@ typedef struct ARSTREAM2_RTCP_SdesItem_s {
 } ARSTREAM2_RTCP_SdesItem_t;
 
 /**
+ * @brief RTP loss report context
+ */
+typedef struct ARSTREAM2_RTCP_LossReportContext_s
+{
+    int count;
+    uint32_t startSeqNum;
+    uint32_t endSeqNum;
+    uint32_t *receivedFlag;
+    int wordCount;
+    uint64_t lastSendTime;
+    uint32_t sendTimeInterval;
+    uint64_t lastReceptionTimestamp;
+
+} ARSTREAM2_RTCP_LossReportContext_t;
+
+/**
  * @brief Application clock delta context
  */
 typedef struct ARSTREAM2_RTCP_ClockDeltaContext_s {
@@ -245,6 +287,7 @@ typedef struct ARSTREAM2_RTCP_SenderContext_s {
 
     ARSTREAM2_RTCP_ClockDeltaContext_t clockDeltaCtx;
     ARSTREAM2_RTCP_VideoStatsContext_t videoStatsCtx;
+    ARSTREAM2_RTCP_LossReportContext_t lossReportCtx;
 } ARSTREAM2_RTCP_SenderContext_t;
 
 /**
@@ -284,6 +327,7 @@ typedef struct ARSTREAM2_RTCP_ReceiverContext_s {
 
     ARSTREAM2_RTCP_ClockDeltaContext_t clockDeltaCtx;
     ARSTREAM2_RTCP_VideoStatsContext_t videoStatsCtx;
+    ARSTREAM2_RTCP_LossReportContext_t lossReportCtx;
 } ARSTREAM2_RTCP_ReceiverContext_t;
 
 
@@ -320,6 +364,18 @@ int ARSTREAM2_RTCP_GenerateSourceDescription(ARSTREAM2_RTCP_Sdes_t *sdes, unsign
 int ARSTREAM2_RTCP_ProcessSourceDescription(const uint8_t *buffer, unsigned int bufferSize, ARSTREAM2_RTCP_SdesItem_t *sdesItem,
                                             int sdesItemMaxCount, int *sdesItemCount);
 
+int ARSTREAM2_RTCP_LossReportReset(ARSTREAM2_RTCP_LossReportContext_t *context);
+
+int ARSTREAM2_RTCP_LossReportSet(ARSTREAM2_RTCP_LossReportContext_t *context, uint32_t extSeqNum);
+
+int ARSTREAM2_RTCP_GenerateExtendedReport(ARSTREAM2_RTCP_ExtendedReport_t *xr, ARSTREAM2_RTCP_LossRleReportBlock_t *lossRle,
+                                          unsigned int maxSize, uint64_t sendTimestamp, uint32_t receiverSsrc, uint32_t senderSsrc,
+                                          ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx, unsigned int *size);
+
+int ARSTREAM2_RTCP_ProcessExtendedReport(const uint8_t *buffer, unsigned int bufferSize,
+                                         uint64_t receptionTimestamp, uint32_t receiverSsrc, uint32_t senderSsrc,
+                                         ARSTREAM2_RTCP_LossReportContext_t *lossReportCtx, int *gotLossReport);
+
 int ARSTREAM2_RTCP_GenerateApplicationClockDelta(ARSTREAM2_RTCP_Application_t *app, ARSTREAM2_RTCP_ClockDelta_t *clockDelta,
                                                  uint64_t sendTimestamp, uint32_t ssrc,
                                                  ARSTREAM2_RTCP_ClockDeltaContext_t *context);
@@ -346,13 +402,13 @@ int ARSTREAM2_RTCP_Sender_GenerateCompoundPacket(uint8_t *packet, unsigned int m
 int ARSTREAM2_RTCP_Receiver_GenerateCompoundPacket(uint8_t *packet, unsigned int maxPacketSize,
                                                    uint64_t sendTimestamp, int generateReceiverReport,
                                                    int generateSourceDescription, int generateApplicationClockDelta,
-                                                   int generateApplicationVideoStats, ARSTREAM2_RTCP_ReceiverContext_t *context,
-                                                   unsigned int *size);
+                                                   int generateApplicationVideoStats, int generateLossReport,
+                                                   ARSTREAM2_RTCP_ReceiverContext_t *context, unsigned int *size);
 
 int ARSTREAM2_RTCP_Sender_ProcessCompoundPacket(const uint8_t *packet, unsigned int packetSize,
                                                 uint64_t receptionTimestamp,
                                                 ARSTREAM2_RTCP_SenderContext_t *context,
-                                                int *gotReceptionReport, int *gotVideoStats);
+                                                int *gotReceptionReport, int *gotVideoStats, int *gotLossReport);
 
 int ARSTREAM2_RTCP_Receiver_ProcessCompoundPacket(const uint8_t *packet, unsigned int packetSize,
                                                   uint64_t receptionTimestamp,
