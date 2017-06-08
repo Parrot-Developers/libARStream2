@@ -64,10 +64,20 @@ typedef struct {
  */
 typedef struct ARSTREAM2_RTP_RtpStats_s
 {
-    uint64_t timestamp;
     int8_t rssi;
-    uint32_t senderPacketCount;
-    uint64_t senderByteCount;
+    struct {
+        uint64_t timestamp;
+        uint32_t sentPacketCount;
+        uint32_t droppedPacketCount;
+        uint64_t sentByteIntegral;
+        uint64_t sentByteIntegralSq;
+        uint64_t droppedByteIntegral;
+        uint64_t droppedByteIntegralSq;
+        uint64_t inputToSentTimeIntegral;
+        uint64_t inputToSentTimeIntegralSq;
+        uint64_t inputToDroppedTimeIntegral;
+        uint64_t inputToDroppedTimeIntegralSq;
+    } senderStats;
     struct {
         uint64_t timestamp;
         uint32_t lastInterval;
@@ -238,6 +248,17 @@ typedef struct ARSTREAM2_RTP_SenderContext_s
     unsigned int stapPayloadSize;
     unsigned int stapHeaderExtensionSize;
 
+    uint32_t sentPacketCount;
+    uint32_t droppedPacketCount;
+    uint64_t sentByteIntegral;
+    uint64_t sentByteIntegralSq;
+    uint64_t droppedByteIntegral;
+    uint64_t droppedByteIntegralSq;
+    uint64_t inputToSentTimeIntegral;
+    uint64_t inputToSentTimeIntegralSq;
+    uint64_t inputToDroppedTimeIntegral;
+    uint64_t inputToDroppedTimeIntegralSq;
+
     void *auCallback;
     void *auCallbackUserPtr;
     uint64_t lastAuCallbackTimestamp;
@@ -344,6 +365,8 @@ int ARSTREAM2_RTP_Sender_GeneratePacket(ARSTREAM2_RTP_SenderContext_t *context, 
                                         uint64_t ntpTimestamp, uint64_t inputTimestamp,
                                         uint64_t timeoutTimestamp, uint16_t seqNum, uint32_t markerBit,
                                         uint32_t importance, uint32_t priority);
+
+int ARSTREAM2_RTP_Sender_FinishPacket(ARSTREAM2_RTP_SenderContext_t *context, ARSTREAM2_RTP_Packet_t *packet, uint64_t curTime, int dropped);
 
 /* WARNING: the call sequence ARSTREAM2_RTP_Receiver_PacketFifoFillMsgVec -> recvmmsg -> ARSTREAM2_RTP_Receiver_PacketFifoAddFromMsgVec
    must not be broken (no change made to the free items list) */

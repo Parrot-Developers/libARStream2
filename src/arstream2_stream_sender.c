@@ -1423,9 +1423,15 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
     if (rtpStats)
     {
         ARSTREAM2_RTP_RtpStats_t s;
+        struct timespec t1;
+        uint64_t curTime;
+
+        ARSAL_Time_GetTime(&t1);
+        curTime = (uint64_t)t1.tv_sec * 1000000 + (uint64_t)t1.tv_nsec / 1000;
+
         memcpy(&s, rtpStats, sizeof(ARSTREAM2_RTP_RtpStats_t));
         s.rssi = streamSender->lastKnownRssi;
-        ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamSender->rtpStatsCtx, &s);
+        ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamSender->rtpStatsCtx, &s, curTime);
         ARSTREAM2_StreamStats_RtpLossFileWrite(&streamSender->rtpLossCtx, &s);
 
         if (streamSender->rtpStatsCallback)
@@ -1444,8 +1450,8 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
             rtpsOut.lastSenderReportInterval = rtpStats->senderReport.lastInterval;
             rtpsOut.senderReportIntervalPacketCount = rtpStats->senderReport.intervalPacketCount;
             rtpsOut.senderReportIntervalByteCount = rtpStats->senderReport.intervalByteCount;
-            rtpsOut.senderPacketCount = rtpStats->senderPacketCount;
-            rtpsOut.senderByteCount = rtpStats->senderByteCount;
+            rtpsOut.senderPacketCount = rtpStats->senderStats.sentPacketCount;
+            rtpsOut.senderByteCount = rtpStats->senderStats.sentByteIntegral;
             rtpsOut.peerClockDelta = rtpStats->clockDelta.peerClockDelta;
             rtpsOut.roundTripDelayFromClockDelta = rtpStats->clockDelta.roundTripDelay;
 

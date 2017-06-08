@@ -1215,9 +1215,17 @@ eARSTREAM2_ERROR ARSTREAM2_RtpSender_ProcessRtcp(ARSTREAM2_RtpSender_t *sender, 
                 ARSTREAM2_RTP_RtpStats_t rtpStats;
 
                 memset(&rtpStats, 0, sizeof(ARSTREAM2_RTP_RtpStats_t));
-                rtpStats.timestamp = curTime;
-                rtpStats.senderPacketCount = sender->rtpSenderContext.packetCount;
-                rtpStats.senderByteCount = sender->rtpSenderContext.byteCount;
+                rtpStats.senderStats.timestamp = curTime;
+                rtpStats.senderStats.sentPacketCount = sender->rtpSenderContext.sentPacketCount;
+                rtpStats.senderStats.droppedPacketCount = sender->rtpSenderContext.droppedPacketCount;
+                rtpStats.senderStats.sentByteIntegral = sender->rtpSenderContext.sentByteIntegral;
+                rtpStats.senderStats.sentByteIntegralSq = sender->rtpSenderContext.sentByteIntegralSq;
+                rtpStats.senderStats.droppedByteIntegral = sender->rtpSenderContext.droppedByteIntegral;
+                rtpStats.senderStats.droppedByteIntegralSq = sender->rtpSenderContext.droppedByteIntegralSq;
+                rtpStats.senderStats.inputToSentTimeIntegral = sender->rtpSenderContext.inputToSentTimeIntegral;
+                rtpStats.senderStats.inputToSentTimeIntegralSq = sender->rtpSenderContext.inputToSentTimeIntegralSq;
+                rtpStats.senderStats.inputToDroppedTimeIntegral = sender->rtpSenderContext.inputToDroppedTimeIntegral;
+                rtpStats.senderStats.inputToDroppedTimeIntegralSq = sender->rtpSenderContext.inputToDroppedTimeIntegralSq;
                 rtpStats.senderReport.timestamp = sender->rtcpSenderContext.lastSrTimestamp;
                 rtpStats.senderReport.lastInterval = sender->rtcpSenderContext.lastSrInterval;
                 rtpStats.senderReport.intervalPacketCount = sender->rtcpSenderContext.srIntervalPacketCount;

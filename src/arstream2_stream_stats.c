@@ -201,7 +201,9 @@ void ARSTREAM2_StreamStats_RtpStatsFileOpen(ARSTREAM2_StreamStats_RtpStatsContex
         titleLen += snprintf(szTitle + titleLen, 200 - titleLen, "%s", dateAndTime);
         ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_STREAM_STATS_TAG, "RTP stats output file title: '%s'", szTitle);
         fprintf(context->outputFile, "# %s\n", szTitle);
-        fprintf(context->outputFile, "timestamp rssi senderPacketCount senderByteCount");
+        fprintf(context->outputFile, "rssi");
+        fprintf(context->outputFile, " senderStatsTimestamp senderStatsSentPacketCount senderStatsDroppedPacketCount senderStatsSentByteIntegral senderStatsSentByteIntegralSq");
+        fprintf(context->outputFile, " senderStatsDroppedByteIntegral senderStatsDroppedByteIntegralSq senderStatsInputToSentTimeIntegral senderStatsInputToSentTimeIntegralSq senderStatsInputToDroppedTimeIntegral senderStatsInputToDroppedTimeIntegralSq");
         fprintf(context->outputFile, " senderReportTimestamp senderReportLastInterval senderReportIntervalPacketCount senderReportIntervalByteCount");
         fprintf(context->outputFile, " receiverReportTimestamp receiverReportRoundTripDelay receiverReportInterarrivalJitter receiverReportReceiverLostCount receiverReportReceiverFractionLost receiverReportReceiverExtHighestSeqNum");
         fprintf(context->outputFile, " djbMetricsReportTimestamp djbMetricsReportDjbNominal djbMetricsReportDjbMax djbMetricsReportDjbHighWatermark djbMetricsReportDjbLowWatermark");
@@ -222,7 +224,7 @@ void ARSTREAM2_StreamStats_RtpStatsFileClose(ARSTREAM2_StreamStats_RtpStatsConte
 }
 
 
-void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsContext_t *context, const ARSTREAM2_RTP_RtpStats_t *rtpStats)
+void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsContext_t *context, const ARSTREAM2_RTP_RtpStats_t *rtpStats, uint64_t curTime)
 {
     if ((!context) || (!rtpStats))
     {
@@ -234,12 +236,29 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
         if (context->fileOutputTimestamp == 0)
         {
             /* init */
-            context->fileOutputTimestamp = rtpStats->timestamp;
+            context->fileOutputTimestamp = curTime;
         }
-        if (rtpStats->timestamp >= context->fileOutputTimestamp + ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_INTERVAL)
+        if (curTime >= context->fileOutputTimestamp + ARSTREAM2_STREAM_STATS_RTP_STATS_OUTPUT_INTERVAL)
         {
-            fprintf(context->outputFile, "%llu %i %lu %llu", (long long unsigned int)rtpStats->timestamp, rtpStats->rssi,
-                    (long unsigned int)rtpStats->senderPacketCount, (long long unsigned int)rtpStats->senderByteCount);
+            fprintf(context->outputFile, "%i", rtpStats->rssi);
+            if (rtpStats->senderReport.timestamp)
+            {
+                fprintf(context->outputFile, " %llu %lu %lu %llu %llu %llu %llu %llu %llu %llu %llu", (long long unsigned int)rtpStats->senderStats.timestamp,
+                        (long unsigned int)rtpStats->senderStats.sentPacketCount, (long unsigned int)rtpStats->senderStats.droppedPacketCount,
+                        (long long unsigned int)rtpStats->senderStats.sentByteIntegral, (long long unsigned int)rtpStats->senderStats.sentByteIntegralSq,
+                        (long long unsigned int)rtpStats->senderStats.droppedByteIntegral, (long long unsigned int)rtpStats->senderStats.droppedByteIntegralSq,
+                        (long long unsigned int)rtpStats->senderStats.inputToSentTimeIntegral, (long long unsigned int)rtpStats->senderStats.inputToSentTimeIntegralSq,
+                        (long long unsigned int)rtpStats->senderStats.inputToDroppedTimeIntegral, (long long unsigned int)rtpStats->senderStats.inputToDroppedTimeIntegralSq);
+            }
+            else
+            {
+                fprintf(context->outputFile, "%llu %lu %lu %llu %llu %llu %llu %llu %llu %llu %llu", (long long unsigned int)0,
+                        (long unsigned int)0, (long unsigned int)0,
+                        (long long unsigned int)0, (long long unsigned int)0,
+                        (long long unsigned int)0, (long long unsigned int)0,
+                        (long long unsigned int)0, (long long unsigned int)0,
+                        (long long unsigned int)0, (long long unsigned int)0);
+            }
             if (rtpStats->senderReport.timestamp)
             {
                 fprintf(context->outputFile, " %llu %lu %lu %lu", (long long unsigned int)rtpStats->senderReport.timestamp,
@@ -282,7 +301,7 @@ void ARSTREAM2_StreamStats_RtpStatsFileWrite(ARSTREAM2_StreamStats_RtpStatsConte
                     (long long int)rtpStats->clockDelta.peerClockDelta, (long unsigned int)rtpStats->clockDelta.roundTripDelay,
                     (long unsigned int)rtpStats->clockDelta.peer2meDelay, (long unsigned int)rtpStats->clockDelta.me2peerDelay);
             fprintf(context->outputFile, "\n");
-            context->fileOutputTimestamp = rtpStats->timestamp;
+            context->fileOutputTimestamp = curTime;
         }
     }
 }
