@@ -571,10 +571,9 @@ static int ARSTREAM2_RtpReceiver_MuxRecvMmsg(ARSTREAM2_RtpReceiver_t *receiver, 
     for (i = 0, count = 0; i < vlen; i++)
     {
         int ret2;
-        unsigned int k;
         struct pomp_buffer *buffer;
         const void *pb_data;
-        size_t pb_len, left, offset;
+        size_t k, pb_len, left, offset;
 
         if ((blocking) && (i == 0))
         {
@@ -600,7 +599,7 @@ static int ARSTREAM2_RtpReceiver_MuxRecvMmsg(ARSTREAM2_RtpReceiver_t *receiver, 
             break;
         }
 
-        for (k = 0, offset = 0, left = pb_len; ((k < msgvec[i].msg_hdr.msg_iovlen) && (left > 0)); k++)
+        for (k = 0, offset = 0, left = pb_len; ((k < (size_t)msgvec[i].msg_hdr.msg_iovlen) && (left > 0)); k++)
         {
             size_t sz = (msgvec[i].msg_hdr.msg_iov[k].iov_len < left) ? msgvec[i].msg_hdr.msg_iov[k].iov_len : left;
             memcpy(msgvec[i].msg_hdr.msg_iov[k].iov_base, (uint8_t*)pb_data + offset, sz);

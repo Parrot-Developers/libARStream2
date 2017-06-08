@@ -693,7 +693,7 @@ int ARSTREAM2_RTP_Sender_PacketFifoCleanFromMsgVec(ARSTREAM2_RTP_SenderContext_t
     for (cur = queue->head, i = 0; ((cur != NULL) && (i < msgVecCount)); cur = queue->head, i++)
     {
         size_t k, len;
-        for (k = 0, len = 0; k < msgVec[i].msg_hdr.msg_iovlen; k++)
+        for (k = 0, len = 0; k < (size_t)msgVec[i].msg_hdr.msg_iovlen; k++)
         {
             len += msgVec[i].msg_hdr.msg_iov[k].iov_len;
         }
