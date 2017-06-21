@@ -1566,7 +1566,7 @@ int ARSTREAM2_RTP_Receiver_PacketFifoAddFromMsgVec(ARSTREAM2_RTP_ReceiverContext
     }
     //ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTP_TAG, "popCount=%d, enqueueCount=%d, garbageCount=%d", popCount, enqueueCount, garbageCount); //TODO: debug
 
-    return ret;
+    return 0;
 }
 
 
