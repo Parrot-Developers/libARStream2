@@ -152,10 +152,16 @@ def rtpStats(statsFile, lossFile, outFile, simple):
             dataSenderReportTime.append((float(data['senderReportTimestamp'][i]) - firstSenderReportTime) / 1000000.)
     dataSenderReportPacketRate = []
     for i, val in enumerate(data['senderReportTimestamp']):
-        dataSenderReportPacketRate.append((float(data['senderReportIntervalPacketCount'][i]) / float(data['senderReportLastInterval'][i]) * 1000000.))
+        if data['senderReportLastInterval'][i] > 0:
+            dataSenderReportPacketRate.append((float(data['senderReportIntervalPacketCount'][i]) / float(data['senderReportLastInterval'][i]) * 1000000.))
+        else:
+            dataSenderReportPacketRate.append(0.)
     dataSenderReportBitrate = []
     for i, val in enumerate(data['senderReportTimestamp']):
-        dataSenderReportBitrate.append((float(data['senderReportIntervalByteCount'][i]) / float(data['senderReportLastInterval'][i]) * 8. * 1000.))
+        if data['senderReportLastInterval'][i] > 0:
+            dataSenderReportBitrate.append((float(data['senderReportIntervalByteCount'][i]) / float(data['senderReportLastInterval'][i]) * 8. * 1000.))
+        else:
+            dataSenderReportBitrate.append(0.)
 
 
     ######################
