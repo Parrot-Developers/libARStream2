@@ -1351,12 +1351,6 @@ int ARSTREAM2_RTPH264_Receiver_PacketFifoToAuFifo(ARSTREAM2_RTPH264_ReceiverCont
                     context->previousDepayloadExtRtpTimestamp = packet->extRtpTimestamp;
                     packetCount++;
                 }
-                else
-                {
-                    rtcpContext->packetsLost++;
-                    ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_RTPH264_TAG, "Late out of order RTP packet dropped (seqNum %d, extSeqNum %d)",
-                                packetItem->packet.seqNum, packetItem->packet.extSeqNum);
-                }
 
                 err = ARSTREAM2_RTP_PacketFifoUnrefBuffer(packetFifo, packetItem->packet.buffer);
                 if (err < 0)
