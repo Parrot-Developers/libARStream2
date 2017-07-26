@@ -890,10 +890,18 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
         /* gray IDR frame generation */
         if ((streamReceiver->appOutput.grayIFramePending) || (streamReceiver->recorder.grayIFramePending))
         {
-            ret = ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame(streamReceiver, &auItem->au);
-            if (ret < 0)
+            if (auItem->au.syncType == ARSTREAM2_H264_AU_SYNC_TYPE_IDR)
             {
-                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame() failed (%d)", ret);
+                streamReceiver->appOutput.grayIFramePending = 0;
+                streamReceiver->recorder.grayIFramePending = 0;
+            }
+            else
+            {
+                ret = ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame(streamReceiver, &auItem->au);
+                if (ret < 0)
+                {
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame() failed (%d)", ret);
+                }
             }
         }
 
