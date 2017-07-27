@@ -842,7 +842,7 @@ void* ARSTREAM2_StreamRecorder_RunThread(void *param)
                 streamRecorder->videoEncapFrameHeader.frame_number = streamRecorder->auCount;
                 streamRecorder->videoEncapFrameHeader.width = streamRecorder->videoWidth;
                 streamRecorder->videoEncapFrameHeader.height = streamRecorder->videoHeight;
-                streamRecorder->videoEncapFrameHeader.timestamp = au->ntpTimestamp;
+                streamRecorder->videoEncapFrameHeader.timestamp = au->ntpTimestampRaw;
                 streamRecorder->videoEncapFrameHeader.frame_type = (au->syncType == ARSTREAM2_H264_AU_SYNC_TYPE_NONE) ? ARMEDIA_ENCAPSULER_FRAME_TYPE_P_FRAME : ARMEDIA_ENCAPSULER_FRAME_TYPE_I_FRAME;
                 streamRecorder->videoEncapFrameHeader.frame = NULL;
                 streamRecorder->videoEncapFrameHeader.avc_insert_ps = 0;
@@ -917,7 +917,7 @@ void* ARSTREAM2_StreamRecorder_RunThread(void *param)
                 if ((au->buffer->metadataBuffer) && (au->metadataSize) && (streamRecorder->recordingMetadataSize > 0))
                 {
                     /* Convert the metadata */
-                    int ret = ARSTREAM2_StreamRecorder_StreamingToRecordingMetadata(au->ntpTimestamp,
+                    int ret = ARSTREAM2_StreamRecorder_StreamingToRecordingMetadata(au->ntpTimestampRaw,
                                                                                     au->buffer->metadataBuffer, au->metadataSize,
                                                                                     streamRecorder->savedMetadata, streamRecorder->savedMetadataSize,
                                                                                     streamRecorder->recordingMetadata, streamRecorder->recordingMetadataSize,
