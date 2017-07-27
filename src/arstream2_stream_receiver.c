@@ -895,7 +895,7 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
                 streamReceiver->appOutput.grayIFramePending = 0;
                 streamReceiver->recorder.grayIFramePending = 0;
             }
-            else
+            else if (auItem->au.syncType != ARSTREAM2_H264_AU_SYNC_TYPE_NONE)
             {
                 ret = ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame(streamReceiver, &auItem->au);
                 if (ret < 0)
