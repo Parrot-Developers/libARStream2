@@ -927,7 +927,7 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
         ARSAL_Mutex_Lock(&(streamReceiver->appOutput.threadMutex));
         int appOutputRunning = streamReceiver->appOutput.running;
         ARSAL_Mutex_Unlock(&(streamReceiver->appOutput.threadMutex));
-        if (appOutputRunning)
+        if ((appOutputRunning) && ((!streamReceiver->appOutput.grayIFramePending) || (auItem->au.syncType == ARSTREAM2_H264_AU_SYNC_TYPE_IDR)))
         {
             ret = ARSTREAM2_StreamReceiver_AppOutputAuEnqueue(streamReceiver, auItem);
             if (ret < 0)
@@ -984,7 +984,7 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
         ARSAL_Mutex_Lock(&(streamReceiver->recorder.threadMutex));
         int recorderRunning = streamReceiver->recorder.running;
         ARSAL_Mutex_Unlock(&(streamReceiver->recorder.threadMutex));
-        if (recorderRunning)
+        if ((recorderRunning) && ((!streamReceiver->recorder.grayIFramePending) || (auItem->au.syncType == ARSTREAM2_H264_AU_SYNC_TYPE_IDR)))
         {
             ret = ARSTREAM2_StreamReceiver_RecorderAuEnqueue(streamReceiver, auItem);
             if (ret < 0)
