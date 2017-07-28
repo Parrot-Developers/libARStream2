@@ -341,8 +341,10 @@ int ARSTREAM2_H264FilterError_HandleMissingSlices(ARSTREAM2_H264Filter_t *filter
             ARSTREAM2_H264_NaluFifoItem_t *item = ARSTREAM2_H264_AuNaluFifoPopFreeItem(au);
             if (item)
             {
+                unsigned int outputSize = 0;
+
                 ARSTREAM2_H264_NaluReset(&item->nalu);
-                err = ARSTREAM2_H264_AuCheckSizeRealloc(au, 16);
+                err = ARSTREAM2_H264_AuCheckSizeRealloc(au, missingMb);
                 if (err != 0)
                 {
                     ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "Access unit buffer is too small");
@@ -355,43 +357,56 @@ int ARSTREAM2_H264FilterError_HandleMissingSlices(ARSTREAM2_H264Filter_t *filter
                     item->nalu.nalu = au->buffer->auBuffer + au->auSize;
                     item->nalu.naluSize = 0;
 
-                    unsigned int outputSize;
-                    err = ARSTREAM2_H264Writer_WriteSkippedPSliceNalu(filter->writer, firstMbInSlice, missingMb, sliceContext,
-                                                                      au->buffer->auBuffer + au->auSize, au->buffer->auBufferSize - au->auSize, &outputSize);
-                    if (err != ARSTREAM2_OK)
+                    if (nextNaluItem->nalu.naluType == ARSTREAM2_H264_NALU_TYPE_SLICE_IDR)
                     {
-                        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "ARSTREAM2_H264Writer_WriteSkippedPSliceNalu() failed (%d)", err);
-                        ret = -1;
+                        err = ARSTREAM2_H264Writer_WriteGrayISliceNalu(filter->writer, firstMbInSlice, missingMb, sliceContext,
+                                                                       au->buffer->auBuffer + au->auSize, au->buffer->auBufferSize - au->auSize, &outputSize);
+                        if (err != ARSTREAM2_OK)
+                        {
+                            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "ARSTREAM2_H264Writer_WriteGrayISliceNalu() failed (%d)", err);
+                            ret = -1;
+                        }
                     }
                     else
                     {
-                        //ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_H264_FILTER_ERROR_TAG, "#%d AUTS:%llu Skipped P slice NALU output size: %d", filter->currentAuOutputIndex, au->ntpTimestamp, outputSize);
-                        item->nalu.naluSize = outputSize;
-                        au->auSize += outputSize;
-
-                        item->nalu.inputTimestamp = nextNaluItem->nalu.inputTimestamp;
-                        item->nalu.timeoutTimestamp = nextNaluItem->nalu.timeoutTimestamp;
-                        item->nalu.ntpTimestamp = nextNaluItem->nalu.ntpTimestamp;
-                        item->nalu.ntpTimestampRaw = nextNaluItem->nalu.ntpTimestampRaw;
-                        item->nalu.ntpTimestampLocal = nextNaluItem->nalu.ntpTimestampLocal;
-                        item->nalu.extRtpTimestamp = nextNaluItem->nalu.extRtpTimestamp;
-                        item->nalu.rtpTimestamp = nextNaluItem->nalu.rtpTimestamp;
-                        item->nalu.missingPacketsBefore = 0;
-                        item->nalu.naluType = ARSTREAM2_H264_NALU_TYPE_SLICE;
-                        item->nalu.sliceType = ARSTREAM2_H264_SLICE_TYPE_P;
-
-                        err = ARSTREAM2_H264_AuEnqueueNaluBefore(au, item, nextNaluItem);
-                        if (err != 0)
+                        err = ARSTREAM2_H264Writer_WriteSkippedPSliceNalu(filter->writer, firstMbInSlice, missingMb, sliceContext,
+                                                                          au->buffer->auBuffer + au->auSize, au->buffer->auBufferSize - au->auSize, &outputSize);
+                        if (err != ARSTREAM2_OK)
                         {
-                            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "Failed to enqueue NALU item in AU");
+                            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "ARSTREAM2_H264Writer_WriteSkippedPSliceNalu() failed (%d)", err);
                             ret = -1;
                         }
-                        else if (filter->currentAuMacroblockStatus)
-                        {
-                            if (firstMbInSlice + missingMb > filter->mbCount) missingMb = filter->mbCount - firstMbInSlice;
-                            memset(filter->currentAuMacroblockStatus + firstMbInSlice,
-                                   ARSTREAM2_STREAM_STATS_MACROBLOCK_STATUS_MISSING_CONCEALED, missingMb);
-                        }
+                    }
+                }
+
+                if (ret == 0)
+                {
+                    //ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_H264_FILTER_ERROR_TAG, "#%d AUTS:%llu concealment slice NALU output size: %d", filter->currentAuOutputIndex, au->ntpTimestamp, outputSize);
+                    item->nalu.naluSize = outputSize;
+                    au->auSize += outputSize;
+
+                    item->nalu.inputTimestamp = nextNaluItem->nalu.inputTimestamp;
+                    item->nalu.timeoutTimestamp = nextNaluItem->nalu.timeoutTimestamp;
+                    item->nalu.ntpTimestamp = nextNaluItem->nalu.ntpTimestamp;
+                    item->nalu.ntpTimestampRaw = nextNaluItem->nalu.ntpTimestampRaw;
+                    item->nalu.ntpTimestampLocal = nextNaluItem->nalu.ntpTimestampLocal;
+                    item->nalu.extRtpTimestamp = nextNaluItem->nalu.extRtpTimestamp;
+                    item->nalu.rtpTimestamp = nextNaluItem->nalu.rtpTimestamp;
+                    item->nalu.missingPacketsBefore = 0;
+                    item->nalu.naluType = ARSTREAM2_H264_NALU_TYPE_SLICE;
+                    item->nalu.sliceType = (nextNaluItem->nalu.naluType == ARSTREAM2_H264_NALU_TYPE_SLICE_IDR) ? ARSTREAM2_H264_SLICE_TYPE_I : ARSTREAM2_H264_SLICE_TYPE_P;
+
+                    err = ARSTREAM2_H264_AuEnqueueNaluBefore(au, item, nextNaluItem);
+                    if (err != 0)
+                    {
+                        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "Failed to enqueue NALU item in AU");
+                        ret = -1;
+                    }
+                    else if (filter->currentAuMacroblockStatus)
+                    {
+                        if (firstMbInSlice + missingMb > filter->mbCount) missingMb = filter->mbCount - firstMbInSlice;
+                        memset(filter->currentAuMacroblockStatus + firstMbInSlice,
+                               ARSTREAM2_STREAM_STATS_MACROBLOCK_STATUS_MISSING_CONCEALED, missingMb);
                     }
                 }
 
@@ -547,8 +562,10 @@ int ARSTREAM2_H264FilterError_HandleMissingEndOfFrame(ARSTREAM2_H264Filter_t *fi
             ARSTREAM2_H264_NaluFifoItem_t *item = ARSTREAM2_H264_AuNaluFifoPopFreeItem(au);
             if (item)
             {
+                unsigned int outputSize = 0;
+
                 ARSTREAM2_H264_NaluReset(&item->nalu);
-                err = ARSTREAM2_H264_AuCheckSizeRealloc(au, 16);
+                err = ARSTREAM2_H264_AuCheckSizeRealloc(au, missingMb);
                 if (err != 0)
                 {
                     ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "Access unit buffer is too small");
@@ -561,43 +578,56 @@ int ARSTREAM2_H264FilterError_HandleMissingEndOfFrame(ARSTREAM2_H264Filter_t *fi
                     item->nalu.nalu = au->buffer->auBuffer + au->auSize;
                     item->nalu.naluSize = 0;
 
-                    unsigned int outputSize;
-                    err = ARSTREAM2_H264Writer_WriteSkippedPSliceNalu(filter->writer, firstMbInSlice, missingMb, sliceContext,
-                                                                      au->buffer->auBuffer + au->auSize, au->buffer->auBufferSize - au->auSize, &outputSize);
-                    if (err != ARSTREAM2_OK)
+                    if (prevNaluItem->nalu.naluType == ARSTREAM2_H264_NALU_TYPE_SLICE_IDR)
                     {
-                        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "ARSTREAM2_H264Writer_WriteSkippedPSliceNalu() failed (%d)", err);
-                        ret = -1;
+                        err = ARSTREAM2_H264Writer_WriteGrayISliceNalu(filter->writer, firstMbInSlice, missingMb, sliceContext,
+                                                                       au->buffer->auBuffer + au->auSize, au->buffer->auBufferSize - au->auSize, &outputSize);
+                        if (err != ARSTREAM2_OK)
+                        {
+                            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "ARSTREAM2_H264Writer_WriteGrayISliceNalu() failed (%d)", err);
+                            ret = -1;
+                        }
                     }
                     else
                     {
-                        //ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_H264_FILTER_ERROR_TAG, "#%d AUTS:%llu Skipped P slice NALU output size: %d", filter->currentAuOutputIndex, au->ntpTimestamp, outputSize);
-                        item->nalu.naluSize = outputSize;
-                        au->auSize += outputSize;
-
-                        item->nalu.inputTimestamp = prevNaluItem->nalu.inputTimestamp;
-                        item->nalu.timeoutTimestamp = prevNaluItem->nalu.timeoutTimestamp;
-                        item->nalu.ntpTimestamp = prevNaluItem->nalu.ntpTimestamp;
-                        item->nalu.ntpTimestampLocal = prevNaluItem->nalu.ntpTimestampLocal;
-                        item->nalu.extRtpTimestamp = prevNaluItem->nalu.extRtpTimestamp;
-                        item->nalu.rtpTimestamp = prevNaluItem->nalu.rtpTimestamp;
-                        item->nalu.isLastInAu = 1;
-                        item->nalu.missingPacketsBefore = 0;
-                        item->nalu.naluType = ARSTREAM2_H264_NALU_TYPE_SLICE;
-                        item->nalu.sliceType = ARSTREAM2_H264_SLICE_TYPE_P;
-
-                        err = ARSTREAM2_H264_AuEnqueueNalu(au, item);
-                        if (err != 0)
+                        err = ARSTREAM2_H264Writer_WriteSkippedPSliceNalu(filter->writer, firstMbInSlice, missingMb, sliceContext,
+                                                                          au->buffer->auBuffer + au->auSize, au->buffer->auBufferSize - au->auSize, &outputSize);
+                        if (err != ARSTREAM2_OK)
                         {
-                            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "Failed to enqueue NALU item in AU");
+                            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "ARSTREAM2_H264Writer_WriteSkippedPSliceNalu() failed (%d)", err);
                             ret = -1;
                         }
-                        else if (filter->currentAuMacroblockStatus)
-                        {
-                            if (firstMbInSlice + missingMb > filter->mbCount) missingMb = filter->mbCount - firstMbInSlice;
-                            memset(filter->currentAuMacroblockStatus + firstMbInSlice,
-                                   ARSTREAM2_STREAM_STATS_MACROBLOCK_STATUS_MISSING_CONCEALED, missingMb);
-                        }
+                    }
+                }
+
+                if (ret == 0)
+                {
+                    //ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_H264_FILTER_ERROR_TAG, "#%d AUTS:%llu concealment slice NALU output size: %d", filter->currentAuOutputIndex, au->ntpTimestamp, outputSize);
+                    item->nalu.naluSize = outputSize;
+                    au->auSize += outputSize;
+
+                    item->nalu.inputTimestamp = prevNaluItem->nalu.inputTimestamp;
+                    item->nalu.timeoutTimestamp = prevNaluItem->nalu.timeoutTimestamp;
+                    item->nalu.ntpTimestamp = prevNaluItem->nalu.ntpTimestamp;
+                    item->nalu.ntpTimestampLocal = prevNaluItem->nalu.ntpTimestampLocal;
+                    item->nalu.extRtpTimestamp = prevNaluItem->nalu.extRtpTimestamp;
+                    item->nalu.rtpTimestamp = prevNaluItem->nalu.rtpTimestamp;
+                    item->nalu.isLastInAu = 1;
+                    item->nalu.missingPacketsBefore = 0;
+                    item->nalu.naluType = ARSTREAM2_H264_NALU_TYPE_SLICE;
+                    item->nalu.sliceType = (prevNaluItem->nalu.naluType == ARSTREAM2_H264_NALU_TYPE_SLICE_IDR) ? ARSTREAM2_H264_SLICE_TYPE_I : ARSTREAM2_H264_SLICE_TYPE_P;
+
+                    err = ARSTREAM2_H264_AuEnqueueNalu(au, item);
+                    if (err != 0)
+                    {
+                        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_H264_FILTER_ERROR_TAG, "Failed to enqueue NALU item in AU");
+                        ret = -1;
+                    }
+                    else if (filter->currentAuMacroblockStatus)
+                    {
+                        if (firstMbInSlice + missingMb > filter->mbCount) missingMb = filter->mbCount - firstMbInSlice;
+                        memset(filter->currentAuMacroblockStatus + firstMbInSlice,
+                               ARSTREAM2_STREAM_STATS_MACROBLOCK_STATUS_MISSING_CONCEALED, missingMb);
                     }
                 }
 
