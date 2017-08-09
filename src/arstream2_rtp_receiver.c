@@ -724,6 +724,8 @@ static int ARSTREAM2_RtpReceiver_MuxSendControlData(ARSTREAM2_RtpReceiver_t *rec
 static int ARSTREAM2_RtpReceiver_NetSendControlData(ARSTREAM2_RtpReceiver_t *receiver, uint8_t *buffer, int size)
 {
     int ret;
+    if (receiver->net.controlSendSin.sin_port == 0)
+        return -EINVAL;
     while (((ret = sendto(receiver->net.controlSocket, buffer, size, 0, (struct sockaddr*)&receiver->net.controlSendSin, sizeof(receiver->net.controlSendSin))) == -1) && (errno == EINTR));
     if (ret < 0)
         ret = -errno;
@@ -781,8 +783,19 @@ unref_buffer:
 static int ARSTREAM2_RtpReceiver_NetReadControlData(ARSTREAM2_RtpReceiver_t *receiver, uint8_t *buffer, int size)
 {
     ssize_t bytes;
+    struct sockaddr_in srcaddr;
+    socklen_t addrlen = sizeof(srcaddr);
+    memset(&srcaddr, 0, sizeof(srcaddr));
 
-    while (((bytes = recv(receiver->net.controlSocket, buffer, size, 0)) == -1) && (errno == EINTR));
+    while (((bytes = recvfrom(receiver->net.controlSocket, buffer, size, 0, (struct sockaddr *)&srcaddr, &addrlen)) == -1) && (errno == EINTR));
+
+    if ((bytes > 0) && (receiver->net.controlSendSin.sin_port == 0) && (srcaddr.sin_port > 0))
+    {
+        /* Save the control port if it was not known */
+        receiver->net.controlSendSin.sin_port = srcaddr.sin_port;
+        ARSAL_PRINT(ARSAL_PRINT_INFO, ARSTREAM2_RTP_RECEIVER_TAG, "Server control port: %d", ntohs(srcaddr.sin_port));
+    }
+
     return (int)bytes;
 }
 
@@ -871,15 +884,9 @@ ARSTREAM2_RtpReceiver_t* ARSTREAM2_RtpReceiver_New(ARSTREAM2_RtpReceiver_Config_
     if (net_config != NULL)
     {
         if (((net_config->serverAddr == NULL) || (!strlen(net_config->serverAddr)))
-                && (((net_config->mcastAddr == NULL) || (!strlen(net_config->mcastAddr))) || ((net_config->mcastIfaceAddr == NULL) || (!strlen(net_config->mcastIfaceAddr)))))
+                && ((net_config->mcastAddr == NULL) || (!strlen(net_config->mcastAddr))))
         {
             ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_RECEIVER_TAG, "Config: no server address provided");
-            SET_WITH_CHECK(error, ARSTREAM2_ERROR_BAD_PARAMETERS);
-            return retReceiver;
-        }
-        if ((net_config->serverStreamPort <= 0) || (net_config->serverControlPort <= 0))
-        {
-            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_RECEIVER_TAG, "Config: no server ports provided");
             SET_WITH_CHECK(error, ARSTREAM2_ERROR_BAD_PARAMETERS);
             return retReceiver;
         }
