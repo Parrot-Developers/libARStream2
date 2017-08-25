@@ -121,12 +121,21 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobj
     return (jlong)(intptr_t)streamReceiverHandle;
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeStop(JNIEnv *env, jobject thizz, jlong cStreamReceiver)
 {
     ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "ARStream2Manager_nativeStop");
+    jboolean retVal = JNI_TRUE;
     ARSTREAM2_StreamReceiver_Handle streamReceiverHandle = (ARSTREAM2_StreamReceiver_Handle)(intptr_t)cStreamReceiver;
-    ARSTREAM2_StreamReceiver_Stop(streamReceiverHandle);
+
+    eARSTREAM2_ERROR err = ARSTREAM2_StreamReceiver_Stop(streamReceiverHandle);
+    if (err != ARSTREAM2_OK)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "Unable to stop StreamReceiver: %s", ARSTREAM2_Error_ToString(err));
+        retVal = JNI_FALSE;
+    }
+
+    return retVal;
 }
 
 JNIEXPORT jboolean JNICALL

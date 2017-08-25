@@ -84,15 +84,19 @@ public class ARStream2Manager
         }
     }
 
-    public void stop()
+    public boolean stop()
     {
         if (isValid())
         {
-            nativeStop(nativeRef);
+            return nativeStop(nativeRef);
+        }
+        else
+        {
+            return false;
         }
     }
 
-    public void dispose()
+    public boolean dispose()
     {
         if (isValid())
         {
@@ -103,7 +107,11 @@ public class ARStream2Manager
             } catch (InterruptedException e)
             {
             }
-            nativeFree(nativeRef);
+            return nativeFree(nativeRef);
+        }
+        else
+        {
+            return false;
         }
     }
 
