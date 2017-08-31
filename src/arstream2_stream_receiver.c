@@ -83,6 +83,7 @@ typedef struct ARSTREAM2_StreamReceiver_s
     struct
     {
         ARSTREAM2_H264_AuFifoQueue_t auFifoQueue;
+        int generateGrayIFrame;
         int grayIFramePending;
         int filterOutSpsPps;
         int filterOutSei;
@@ -115,6 +116,7 @@ typedef struct ARSTREAM2_StreamReceiver_s
         time_t startTime;
         int startPending;
         int running;
+        int generateGrayIFrame;
         int grayIFramePending;
         ARSAL_Thread_t thread;
         ARSAL_Mutex_t threadMutex;
@@ -194,6 +196,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
         streamReceiver->signalPipe[0] = -1;
         streamReceiver->signalPipe[1] = -1;
         streamReceiver->maxPacketSize = (config->maxPacketSize > 0) ? config->maxPacketSize - ARSTREAM2_RTP_TOTAL_HEADERS_SIZE : ARSTREAM2_RTP_MAX_PAYLOAD_SIZE;
+        streamReceiver->appOutput.generateGrayIFrame = (config->generateFirstGrayIFrame > 0) ? 1 : 0;
         streamReceiver->appOutput.filterOutSpsPps = (config->filterOutSpsPps > 0) ? 1 : 0;
         streamReceiver->appOutput.filterOutSei = (config->filterOutSei > 0) ? 1 : 0;
         streamReceiver->appOutput.replaceStartCodesWithNaluSize = (config->replaceStartCodesWithNaluSize > 0) ? 1 : 0;
@@ -224,6 +227,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
             ret = ARSTREAM2_ERROR_ALLOC;
         }
         streamReceiver->recorder.ardiscoveryProductType = config->ardiscoveryProductType;
+        streamReceiver->recorder.generateGrayIFrame = (config->generateFirstGrayIFrame > 0) ? 1 : 0;
         char szDate[200];
         time_t rawtime;
         struct tm timeinfo;
@@ -1176,7 +1180,7 @@ static int ARSTREAM2_StreamReceiver_StreamRecorderInit(ARSTREAM2_StreamReceiver_
                 else
                 {
                     ARSAL_Mutex_Lock(&(streamReceiver->recorder.threadMutex));
-                    streamReceiver->recorder.grayIFramePending = 1;
+                    streamReceiver->recorder.grayIFramePending = streamReceiver->recorder.generateGrayIFrame;
                     streamReceiver->recorder.running = 1;
                     ARSAL_Mutex_Unlock(&(streamReceiver->recorder.threadMutex));
                 }
@@ -1601,7 +1605,7 @@ void* ARSTREAM2_StreamReceiver_RunAppOutputThread(void *streamReceiverHandle)
                         if (cbRet == ARSTREAM2_ERROR_RESYNC_REQUIRED)
                         {
                             /* schedule gray IDR frame */
-                            streamReceiver->appOutput.grayIFramePending = 1;
+                            streamReceiver->appOutput.grayIFramePending = streamReceiver->appOutput.generateGrayIFrame;
                         }
                     }
                     streamReceiver->lastAuOutputTimestamp = curTime;
@@ -1900,7 +1904,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_StartAppOutput(ARSTREAM2_StreamReceive
     }
 
     ARSAL_Mutex_Lock(&(streamReceiver->appOutput.threadMutex));
-    streamReceiver->appOutput.grayIFramePending = 1;
+    streamReceiver->appOutput.grayIFramePending = streamReceiver->appOutput.generateGrayIFrame;
     streamReceiver->appOutput.running = 1;
     ARSAL_Mutex_Unlock(&(streamReceiver->appOutput.threadMutex));
 
