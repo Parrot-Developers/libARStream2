@@ -111,6 +111,7 @@ typedef struct ARSTREAM2_StreamReceiver_s
     {
         ARSTREAM2_H264_AuFifoQueue_t auFifoQueue;
         char *fileName;
+        int ardiscoveryProductType;
         time_t startTime;
         int startPending;
         int running;
@@ -222,6 +223,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
             ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed");
             ret = ARSTREAM2_ERROR_ALLOC;
         }
+        streamReceiver->recorder.ardiscoveryProductType = config->ardiscoveryProductType;
         char szDate[200];
         time_t rawtime;
         struct tm timeinfo;
@@ -1144,7 +1146,7 @@ static int ARSTREAM2_StreamReceiver_StreamRecorderInit(ARSTREAM2_StreamReceiver_
         recConfig.spsSize = streamReceiver->spsSize;
         recConfig.pps = streamReceiver->pPps;
         recConfig.ppsSize = streamReceiver->ppsSize;
-        recConfig.serviceType = 0; //TODO
+        recConfig.ardiscoveryProductType = streamReceiver->recorder.ardiscoveryProductType;
         recConfig.auFifo = &streamReceiver->auFifo;
         recConfig.auFifoQueue = &streamReceiver->recorder.auFifoQueue;
         recConfig.mutex = &streamReceiver->recorder.threadMutex;

@@ -26,8 +26,9 @@ static JavaVM *g_vm = NULL;
 // ---------------------------------------
 
 JNIEXPORT jlong JNICALL
-Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobject thizz, jstring serverAddress, jint serverStreamPort, jint serverControlPort,
-    jint clientStreamPort, jint clientControlPort, jstring canonicalName, jstring friendlyName, jint maxPacketSize, jint classSelector)
+Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobject thizz,
+    jstring serverAddress, jint serverStreamPort, jint serverControlPort, jint clientStreamPort, jint clientControlPort,
+    jstring canonicalName, jstring friendlyName, jint maxPacketSize, jint classSelector, jint ardiscoveryProductType)
 {
     ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "ARStream2Manager_nativeInit");
     ARSTREAM2_StreamReceiver_Config_t config;
@@ -58,6 +59,7 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobj
     config.replaceStartCodesWithNaluSize = 0;
     config.generateSkippedPSlices = 1;
     config.generateFirstGrayIFrame = 1;
+    config.ardiscoveryProductType = ardiscoveryProductType;
     config.debugPath = ARSTREAM2_STREAM_RECEIVER_JNI_DEBUG_PATH;
 
     ARSTREAM2_StreamReceiver_Handle streamReceiverHandle = 0;
@@ -77,7 +79,8 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobj
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobject thizz, jlong mux, jstring canonicalName, jstring friendlyName, jint maxPacketSize)
+Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobject thizz,
+    jlong mux, jstring canonicalName, jstring friendlyName, jint maxPacketSize, jint ardiscoveryProductType)
 {
     ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "ARStream2Manager_nativeInit");
     ARSTREAM2_StreamReceiver_Config_t config;
@@ -100,6 +103,7 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobj
     config.replaceStartCodesWithNaluSize = 0;
     config.generateSkippedPSlices = 1;
     config.generateFirstGrayIFrame = 1;
+    config.ardiscoveryProductType = ardiscoveryProductType;
     config.debugPath = ARSTREAM2_STREAM_RECEIVER_JNI_DEBUG_PATH;
 
     ARSTREAM2_StreamReceiver_Handle streamReceiverHandle = 0;

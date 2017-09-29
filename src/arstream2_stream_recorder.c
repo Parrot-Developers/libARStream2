@@ -543,7 +543,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamRecorder_Init(ARSTREAM2_StreamRecorder_Handle *
         eARMEDIA_ERROR err = ARMEDIA_OK;
         streamRecorder->videoEncap = ARMEDIA_VideoEncapsuler_New(config->mediaFileName,
                                                                  round(config->videoFramerate),
-                                                                 "", "", config->serviceType, &err);
+                                                                 "", "", config->ardiscoveryProductType, &err);
         if (streamRecorder->videoEncap == NULL)
         {
             ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECORDER_TAG, "ARMEDIA_VideoEncapsuler_New() failed: %d (%s)", err, ARMEDIA_Error_ToString(err));

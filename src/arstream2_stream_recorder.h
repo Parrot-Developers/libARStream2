@@ -36,7 +36,7 @@ typedef struct
     uint32_t spsSize;                       /**< H.264 video SPS buffer size in bytes */
     const uint8_t *pps;                     /**< H.264 video PPS buffer pointer */
     uint32_t ppsSize;                       /**< H.264 video PPS buffer size in bytes */
-    int serviceType;                        /**< ARDiscovery service type */
+    int ardiscoveryProductType;             /**< ARDiscovery product type */
     ARSTREAM2_H264_AuFifo_t *auFifo;
     ARSTREAM2_H264_AuFifoQueue_t *auFifoQueue;
     ARSAL_Mutex_t *mutex;
