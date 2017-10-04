@@ -777,6 +777,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     uint32_t _sendInterval = 0, minSendInterval = (uint32_t)(-1);
     char *ptr;
+    int i;
 
     if (!streamSenderHandle)
     {
@@ -1012,6 +1013,25 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
         metadata->copyright = NULL;
     }
 
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)))
+        {
+            _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &metadata->custom[i].value, &_sendInterval);
+            if (_ret == ARSTREAM2_OK)
+            {
+                if (_sendInterval < minSendInterval)
+                {
+                    minSendInterval = _sendInterval;
+                }
+            }
+            else
+            {
+                metadata->custom[i].value = NULL;
+            }
+        }
+    }
+
     if (sendInterval)
     {
         *sendInterval = minSendInterval;
@@ -1027,6 +1047,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
     ARSTREAM2_StreamSender_t *streamSender = (ARSTREAM2_StreamSender_t*)streamSenderHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     char *ptr;
+    int i;
 
     if (!streamSenderHandle)
     {
@@ -1237,6 +1258,19 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
         }
     }
 
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)) && (metadata->custom[i].value) && (strlen(metadata->custom[i].value)))
+        {
+            ptr = NULL;
+            _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &ptr, NULL);
+            if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->custom[i].value, 256)))
+            {
+                ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, metadata->custom[i].value, sendInterval);
+            }
+        }
+    }
+
     return ret;
 }
 
@@ -1247,6 +1281,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamS
     ARSTREAM2_StreamSender_t *streamSender = (ARSTREAM2_StreamSender_t*)streamSenderHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     char *ptr;
+    int i;
 
     if (!streamSenderHandle)
     {
@@ -1384,6 +1419,18 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamS
     if (_ret != ARSTREAM2_OK)
     {
         metadata->copyright = NULL;
+    }
+
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)))
+        {
+            _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &metadata->custom[i].value);
+            if (_ret != ARSTREAM2_OK)
+            {
+                metadata->custom[i].value = NULL;
+            }
+        }
     }
 
     return ret;
