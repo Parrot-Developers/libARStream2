@@ -14,11 +14,11 @@ public class ARStream2Manager
     private final Thread networkThread;
     private final Thread outputThread;
 
-    public ARStream2Manager(Mux mux, String canonicalName, int maxPacketSize)
+    public ARStream2Manager(Mux mux, String canonicalName, int maxPacketSize, int ardiscoveryProductType)
     {
         String friendlyName = Build.MODEL + " " + Build.DEVICE + " " + canonicalName;
         Mux.Ref muxRef = mux.newMuxRef();
-        this.nativeRef = nativeMuxInit(muxRef.getCPtr(), canonicalName, friendlyName, maxPacketSize);
+        this.nativeRef = nativeMuxInit(muxRef.getCPtr(), canonicalName, friendlyName, maxPacketSize, ardiscoveryProductType);
         muxRef.release();
         this.networkThread = new Thread(new Runnable()
         {
@@ -41,11 +41,11 @@ public class ARStream2Manager
     }
 
     public ARStream2Manager(String serverAddress, int serverStreamPort, int serverControlPort, int clientStreamPort, int clientControlPort,
-                         String canonicalName, int maxPacketSize, ARSAL_SOCKET_CLASS_SELECTOR_ENUM classSelector)
+                         String canonicalName, int maxPacketSize, ARSAL_SOCKET_CLASS_SELECTOR_ENUM classSelector, int ardiscoveryProductType)
     {
         String friendlyName = Build.MODEL + " " + Build.DEVICE + " " + canonicalName;
         this.nativeRef = nativeNetInit(serverAddress, serverStreamPort, serverControlPort, clientStreamPort, clientControlPort,
-                canonicalName, friendlyName, maxPacketSize, classSelector.getValue());
+                canonicalName, friendlyName, maxPacketSize, classSelector.getValue(), ardiscoveryProductType);
         this.networkThread = new Thread(new Runnable()
         {
             @Override
@@ -84,15 +84,19 @@ public class ARStream2Manager
         }
     }
 
-    public void stop()
+    public boolean stop()
     {
         if (isValid())
         {
-            nativeStop(nativeRef);
+            return nativeStop(nativeRef);
+        }
+        else
+        {
+            return false;
         }
     }
 
-    public void dispose()
+    public boolean dispose()
     {
         if (isValid())
         {
@@ -103,7 +107,11 @@ public class ARStream2Manager
             } catch (InterruptedException e)
             {
             }
-            nativeFree(nativeRef);
+            return nativeFree(nativeRef);
+        }
+        else
+        {
+            return false;
         }
     }
 
@@ -115,9 +123,10 @@ public class ARStream2Manager
     private native long nativeNetInit(String serverAddress, int serverStreamPort, int serverControlPort,
                                       int clientStreamPort, int clientControlPort,
                                       String canonicalName, String friendlyName, int maxPacketSize,
-                                      int classSelector);
+                                      int classSelector, int ardiscoveryProductType);
 
-    private native long nativeMuxInit(long mux, String canonicalName, String friendlyName, int maxPacketSize);
+    private native long nativeMuxInit(long mux, String canonicalName, String friendlyName,
+                                      int maxPacketSize, int ardiscoveryProductType);
 
     private native boolean nativeStop(long nativeRef);
 

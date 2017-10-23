@@ -984,6 +984,7 @@ eARDISCOVERY_ERROR ARDISCOVERY_Connection_ReceiveJsonCallback(uint8_t *dataRx, u
         int error = 0;
         json_object* jsonObj_All;
         json_object* jsonObj_Item;
+        json_bool jsonRet;
         int value;
 
         /* Parse the whole Rx buffer */
@@ -999,8 +1000,8 @@ eARDISCOVERY_ERROR ARDISCOVERY_Connection_ReceiveJsonCallback(uint8_t *dataRx, u
         /* Find the port node */
         if (error == 0)
         {
-            jsonObj_Item = json_object_object_get(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_C2DPORT_KEY);
-            if (jsonObj_Item != NULL)
+            jsonRet = json_object_object_get_ex(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_C2DPORT_KEY, &jsonObj_Item);
+            if ((jsonRet) && (jsonObj_Item != NULL))
             {
                 value = json_object_get_int(jsonObj_Item);
                 deviceManager->c2dPort = value;
@@ -1011,8 +1012,8 @@ eARDISCOVERY_ERROR ARDISCOVERY_Connection_ReceiveJsonCallback(uint8_t *dataRx, u
         /* Find the QoS mode */
         if (error == 0)
         {
-            jsonObj_Item = json_object_object_get(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_QOS_MODE_KEY);
-            if (jsonObj_Item != NULL)
+            jsonRet = json_object_object_get_ex(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_QOS_MODE_KEY, &jsonObj_Item);
+            if ((jsonRet) && (jsonObj_Item != NULL))
             {
                 value = json_object_get_int(jsonObj_Item);
                 deviceManager->qosMode = value;
@@ -1023,8 +1024,8 @@ eARDISCOVERY_ERROR ARDISCOVERY_Connection_ReceiveJsonCallback(uint8_t *dataRx, u
         /* Find the arstream2ServerStreamPort node */
         if (error == 0)
         {
-            jsonObj_Item = json_object_object_get(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_ARSTREAM2_SERVER_STREAM_PORT_KEY);
-            if (jsonObj_Item != NULL)
+            jsonRet = json_object_object_get_ex(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_ARSTREAM2_SERVER_STREAM_PORT_KEY, &jsonObj_Item);
+            if ((jsonRet) && (jsonObj_Item != NULL))
             {
                 value = json_object_get_int(jsonObj_Item);
                 deviceManager->arstream2ServerStreamPort = value;
@@ -1035,8 +1036,8 @@ eARDISCOVERY_ERROR ARDISCOVERY_Connection_ReceiveJsonCallback(uint8_t *dataRx, u
         /* Find the arstream2ServerControlPort node */
         if (error == 0)
         {
-            jsonObj_Item = json_object_object_get(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_ARSTREAM2_SERVER_CONTROL_PORT_KEY);
-            if (jsonObj_Item != NULL)
+            jsonRet = json_object_object_get_ex(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_ARSTREAM2_SERVER_CONTROL_PORT_KEY, &jsonObj_Item);
+            if ((jsonRet) && (jsonObj_Item != NULL))
             {
                 value = json_object_get_int(jsonObj_Item);
                 deviceManager->arstream2ServerControlPort = value;
@@ -1047,8 +1048,8 @@ eARDISCOVERY_ERROR ARDISCOVERY_Connection_ReceiveJsonCallback(uint8_t *dataRx, u
         /* Find the arstream2MaxPacketSize node */
         if (error == 0)
         {
-            jsonObj_Item = json_object_object_get(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_ARSTREAM2_MAX_PACKET_SIZE_KEY);
-            if (jsonObj_Item != NULL)
+            jsonRet = json_object_object_get_ex(jsonObj_All, ARDISCOVERY_CONNECTION_JSON_ARSTREAM2_MAX_PACKET_SIZE_KEY, &jsonObj_Item);
+            if ((jsonRet) && (jsonObj_Item != NULL))
             {
                 value = json_object_get_int(jsonObj_Item);
                 deviceManager->arstream2MaxPacketSize = value;

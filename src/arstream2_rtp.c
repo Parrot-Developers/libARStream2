@@ -693,7 +693,7 @@ int ARSTREAM2_RTP_Sender_PacketFifoCleanFromMsgVec(ARSTREAM2_RTP_SenderContext_t
     for (cur = queue->head, i = 0; ((cur != NULL) && (i < msgVecCount)); cur = queue->head, i++)
     {
         size_t k, len;
-        for (k = 0, len = 0; k < msgVec[i].msg_hdr.msg_iovlen; k++)
+        for (k = 0, len = 0; k < (size_t)msgVec[i].msg_hdr.msg_iovlen; k++)
         {
             len += msgVec[i].msg_hdr.msg_iov[k].iov_len;
         }
@@ -702,12 +702,10 @@ int ARSTREAM2_RTP_Sender_PacketFifoCleanFromMsgVec(ARSTREAM2_RTP_SenderContext_t
             ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTP_TAG, "Sent size (%d) does not match message iov total size (%zu)", msgVec[i].msg_len, len);
         }
 
-        /* call the monitoringCallback */
-        if (context->monitoringCallback != NULL)
+        int ret = ARSTREAM2_RTP_Sender_FinishPacket(context, &cur->packet, curTime, 0);
+        if (ret < 0)
         {
-            context->monitoringCallback(cur->packet.inputTimestamp, curTime, cur->packet.ntpTimestamp, cur->packet.rtpTimestamp,
-                                        cur->packet.seqNum, cur->packet.markerBit, cur->packet.importance, cur->packet.priority,
-                                        cur->packet.payloadSize, 0, context->monitoringCallbackUserPtr);
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_TAG, "ARSTREAM2_RTP_Sender_FinishPacket() failed (%d)", ret);
         }
 
         if (cur->next)
@@ -723,7 +721,6 @@ int ARSTREAM2_RTP_Sender_PacketFifoCleanFromMsgVec(ARSTREAM2_RTP_SenderContext_t
             queue->tail = NULL;
         }
 
-        int ret;
         if (cur->packet.buffer)
         {
             ret = ARSTREAM2_RTP_PacketFifoUnrefBuffer(fifo, cur->packet.buffer);
@@ -786,13 +783,10 @@ int ARSTREAM2_RTP_Sender_PacketFifoCleanFromTimeout(ARSTREAM2_RTP_SenderContext_
             {
                 dropCount[cur->packet.importance]++;
             }
-
-            /* call the monitoringCallback */
-            if (context->monitoringCallback != NULL)
+            int ret = ARSTREAM2_RTP_Sender_FinishPacket(context, &cur->packet, curTime, 1);
+            if (ret < 0)
             {
-                context->monitoringCallback(cur->packet.inputTimestamp, curTime, cur->packet.ntpTimestamp, cur->packet.rtpTimestamp, cur->packet.seqNum,
-                                            cur->packet.markerBit, cur->packet.importance, cur->packet.priority,
-                                            0, cur->packet.payloadSize, context->monitoringCallbackUserPtr);
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_TAG, "ARSTREAM2_RTP_Sender_FinishPacket() failed (%d)", ret);
             }
 
             if (cur->next)
@@ -816,7 +810,6 @@ int ARSTREAM2_RTP_Sender_PacketFifoCleanFromTimeout(ARSTREAM2_RTP_SenderContext_
 
             next = cur->next;
 
-            int ret;
             if (cur->packet.buffer)
             {
                 ret = ARSTREAM2_RTP_PacketFifoUnrefBuffer(fifo, cur->packet.buffer);
@@ -870,12 +863,10 @@ int ARSTREAM2_RTP_Sender_PacketFifoRandomDrop(ARSTREAM2_RTP_SenderContext_t *con
     {
         if (rand() <= RAND_MAX * ratio)
         {
-            /* call the monitoringCallback */
-            if (context->monitoringCallback != NULL)
+            int ret = ARSTREAM2_RTP_Sender_FinishPacket(context, &cur->packet, curTime, 1);
+            if (ret < 0)
             {
-                context->monitoringCallback(cur->packet.inputTimestamp, curTime, cur->packet.ntpTimestamp, cur->packet.rtpTimestamp, cur->packet.seqNum,
-                                            cur->packet.markerBit, cur->packet.importance, cur->packet.priority,
-                                            0, cur->packet.payloadSize, context->monitoringCallbackUserPtr);
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_TAG, "ARSTREAM2_RTP_Sender_FinishPacket() failed (%d)", ret);
             }
 
             if (cur->next)
@@ -899,7 +890,6 @@ int ARSTREAM2_RTP_Sender_PacketFifoRandomDrop(ARSTREAM2_RTP_SenderContext_t *con
 
             next = cur->next;
 
-            int ret;
             if (cur->packet.buffer)
             {
                 ret = ARSTREAM2_RTP_PacketFifoUnrefBuffer(fifo, cur->packet.buffer);
@@ -948,12 +938,10 @@ int ARSTREAM2_RTP_Sender_PacketFifoFlushQueue(ARSTREAM2_RTP_SenderContext_t *con
         item = ARSTREAM2_RTP_PacketFifoDequeueItem(queue);
         if (item)
         {
-            /* call the monitoringCallback */
-            if (context->monitoringCallback != NULL)
+            int ret = ARSTREAM2_RTP_Sender_FinishPacket(context, &item->packet, curTime, 1);
+            if (ret < 0)
             {
-                context->monitoringCallback(item->packet.inputTimestamp, curTime, item->packet.ntpTimestamp, item->packet.rtpTimestamp, item->packet.seqNum,
-                                            item->packet.markerBit, item->packet.importance, item->packet.priority,
-                                            0, item->packet.payloadSize, context->monitoringCallbackUserPtr);
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_TAG, "ARSTREAM2_RTP_Sender_FinishPacket() failed (%d)", ret);
             }
 
             if (item->packet.buffer)
@@ -1009,12 +997,10 @@ int ARSTREAM2_RTP_Sender_PacketFifoFlush(ARSTREAM2_RTP_SenderContext_t *context,
             item = ARSTREAM2_RTP_PacketFifoDequeueItem(queue);
             if (item)
             {
-                /* call the monitoringCallback */
-                if (context->monitoringCallback != NULL)
+                int ret = ARSTREAM2_RTP_Sender_FinishPacket(context, &item->packet, curTime, 1);
+                if (ret < 0)
                 {
-                    context->monitoringCallback(item->packet.inputTimestamp, curTime, item->packet.ntpTimestamp, item->packet.rtpTimestamp, item->packet.seqNum,
-                                                item->packet.markerBit, item->packet.importance, item->packet.priority,
-                                                0, item->packet.payloadSize, context->monitoringCallbackUserPtr);
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_TAG, "ARSTREAM2_RTP_Sender_FinishPacket() failed (%d)", ret);
                 }
 
                 if (item->packet.buffer)
@@ -1113,6 +1099,49 @@ int ARSTREAM2_RTP_Sender_GeneratePacket(ARSTREAM2_RTP_SenderContext_t *context, 
     packet->buffer->msgIov[packet->msgIovLength].iov_base = (void*)packet->payload;
     packet->buffer->msgIov[packet->msgIovLength].iov_len = (size_t)payloadSize;
     packet->msgIovLength++;
+
+    return 0;
+}
+
+
+int ARSTREAM2_RTP_Sender_FinishPacket(ARSTREAM2_RTP_SenderContext_t *context, ARSTREAM2_RTP_Packet_t *packet, uint64_t curTime, int dropped)
+{
+    if ((!context) || (!packet))
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_TAG, "Invalid pointer");
+        return -1;
+    }
+    if (!curTime)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTP_TAG, "Invalid current time");
+        return -1;
+    }
+
+    if (dropped)
+    {
+        context->droppedPacketCount++;
+        context->droppedByteIntegral += packet->payloadSize;
+        context->droppedByteIntegralSq += (packet->payloadSize * packet->payloadSize);
+        context->inputToDroppedTimeIntegral += (curTime - packet->inputTimestamp);
+        context->inputToDroppedTimeIntegralSq += ((curTime - packet->inputTimestamp) * (curTime - packet->inputTimestamp));
+    }
+    else
+    {
+        context->sentPacketCount++;
+        context->sentByteIntegral += packet->payloadSize;
+        context->sentByteIntegralSq += (packet->payloadSize * packet->payloadSize);
+        context->inputToSentTimeIntegral += (curTime - packet->inputTimestamp);
+        context->inputToSentTimeIntegralSq += ((curTime - packet->inputTimestamp) * (curTime - packet->inputTimestamp));
+    }
+
+    /* call the monitoringCallback */
+    if (context->monitoringCallback != NULL)
+    {
+        context->monitoringCallback(packet->inputTimestamp, curTime, packet->ntpTimestamp, packet->rtpTimestamp, packet->seqNum,
+                                    packet->markerBit, packet->importance, packet->priority,
+                                    (dropped) ? 0 : packet->payloadSize, (dropped) ? packet->payloadSize : 0,
+                                    context->monitoringCallbackUserPtr);
+    }
 
     return 0;
 }
@@ -1537,7 +1566,7 @@ int ARSTREAM2_RTP_Receiver_PacketFifoAddFromMsgVec(ARSTREAM2_RTP_ReceiverContext
     }
     //ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTP_TAG, "popCount=%d, enqueueCount=%d, garbageCount=%d", popCount, enqueueCount, garbageCount); //TODO: debug
 
-    return ret;
+    return 0;
 }
 
 

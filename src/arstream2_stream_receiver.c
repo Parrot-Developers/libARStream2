@@ -40,6 +40,8 @@
 #define ARSTREAM2_STREAM_RECEIVER_VIDEO_AUTOREC_OUTPUT_FILEEXT "mp4"
 
 #define ARSTREAM2_STREAM_RECEIVER_VIDEO_STATS_RTCP_SEND_INTERVAL (1000000)
+#define ARSTREAM2_STREAM_RECEIVER_LOSS_REPORT_RTCP_SEND_INTERVAL (500000)
+#define ARSTREAM2_STREAM_RECEIVER_DJB_REPORT_RTCP_SEND_INTERVAL (1000000)
 #define ARSTREAM2_STREAM_RECEIVER_UNTIMED_METADATA_DEFAULT_SEND_INTERVAL (5000000)
 
 
@@ -81,6 +83,7 @@ typedef struct ARSTREAM2_StreamReceiver_s
     struct
     {
         ARSTREAM2_H264_AuFifoQueue_t auFifoQueue;
+        int generateGrayIFrame;
         int grayIFramePending;
         int filterOutSpsPps;
         int filterOutSei;
@@ -109,9 +112,11 @@ typedef struct ARSTREAM2_StreamReceiver_s
     {
         ARSTREAM2_H264_AuFifoQueue_t auFifoQueue;
         char *fileName;
+        int ardiscoveryProductType;
         time_t startTime;
         int startPending;
         int running;
+        int generateGrayIFrame;
         int grayIFramePending;
         ARSAL_Thread_t thread;
         ARSAL_Mutex_t threadMutex;
@@ -125,12 +130,16 @@ typedef struct ARSTREAM2_StreamReceiver_s
     char *dateAndTime;
     char *debugPath;
     ARSTREAM2_StreamStats_VideoStatsContext_t videoStatsCtx;
+    ARSTREAM2_StreamStats_RtpStatsContext_t rtpStatsCtx;
+    ARSTREAM2_StreamStats_RtpLossContext_t rtpLossCtx;
+    int8_t lastKnownRssi;
 
 } ARSTREAM2_StreamReceiver_t;
 
 
 static int ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame(ARSTREAM2_StreamReceiver_t *streamReceiver, ARSTREAM2_H264_AccessUnit_t *nextAu);
 static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoItem_t *auItem, void *userPtr);
+static void ARSTREAM2_StreamReceiver_RtpReceiverStatsCallback(const ARSTREAM2_RTP_RtpStats_t *rtpStats, void *userPtr);
 static int ARSTREAM2_StreamReceiver_H264FilterSpsPpsCallback(uint8_t *spsBuffer, int spsSize, uint8_t *ppsBuffer, int ppsSize, void *userPtr);
 static int ARSTREAM2_StreamReceiver_StreamRecorderInit(ARSTREAM2_StreamReceiver_t *streamReceiver);
 static int ARSTREAM2_StreamReceiver_StreamRecorderStop(ARSTREAM2_StreamReceiver_t *streamReceiver);
@@ -187,6 +196,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
         streamReceiver->signalPipe[0] = -1;
         streamReceiver->signalPipe[1] = -1;
         streamReceiver->maxPacketSize = (config->maxPacketSize > 0) ? config->maxPacketSize - ARSTREAM2_RTP_TOTAL_HEADERS_SIZE : ARSTREAM2_RTP_MAX_PAYLOAD_SIZE;
+        streamReceiver->appOutput.generateGrayIFrame = (config->generateFirstGrayIFrame > 0) ? 1 : 0;
         streamReceiver->appOutput.filterOutSpsPps = (config->filterOutSpsPps > 0) ? 1 : 0;
         streamReceiver->appOutput.filterOutSei = (config->filterOutSei > 0) ? 1 : 0;
         streamReceiver->appOutput.replaceStartCodesWithNaluSize = (config->replaceStartCodesWithNaluSize > 0) ? 1 : 0;
@@ -216,6 +226,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
             ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "Allocation failed");
             ret = ARSTREAM2_ERROR_ALLOC;
         }
+        streamReceiver->recorder.ardiscoveryProductType = config->ardiscoveryProductType;
+        streamReceiver->recorder.generateGrayIFrame = (config->generateFirstGrayIFrame > 0) ? 1 : 0;
         char szDate[200];
         time_t rawtime;
         struct tm timeinfo;
@@ -227,6 +239,10 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
         ARSTREAM2_StreamReceiver_AutoStartRecorder(streamReceiver);
         ARSTREAM2_StreamStats_VideoStatsFileOpen(&streamReceiver->videoStatsCtx, streamReceiver->debugPath, streamReceiver->friendlyName,
                                                  streamReceiver->dateAndTime, ARSTREAM2_H264_MB_STATUS_ZONE_COUNT, ARSTREAM2_H264_MB_STATUS_CLASS_COUNT);
+        ARSTREAM2_StreamStats_RtpStatsFileOpen(&streamReceiver->rtpStatsCtx, streamReceiver->debugPath,
+                                               streamReceiver->friendlyName, streamReceiver->dateAndTime);
+        ARSTREAM2_StreamStats_RtpLossFileOpen(&streamReceiver->rtpLossCtx, streamReceiver->debugPath,
+                                              streamReceiver->friendlyName, streamReceiver->dateAndTime);
     }
 
     if (ret == ARSTREAM2_OK)
@@ -411,10 +427,14 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
         receiverConfig.auFifo = &(streamReceiver->auFifo);
         receiverConfig.auCallback = ARSTREAM2_StreamReceiver_RtpReceiverAuCallback;
         receiverConfig.auCallbackUserPtr = streamReceiver;
+        receiverConfig.rtpStatsCallback = ARSTREAM2_StreamReceiver_RtpReceiverStatsCallback;
+        receiverConfig.rtpStatsCallbackUserPtr = streamReceiver;
         receiverConfig.maxPacketSize = config->maxPacketSize;
         receiverConfig.insertStartCodes = 1;
         receiverConfig.generateReceiverReports = config->generateReceiverReports;
         receiverConfig.videoStatsSendTimeInterval = ARSTREAM2_STREAM_RECEIVER_VIDEO_STATS_RTCP_SEND_INTERVAL;
+        receiverConfig.lossReportSendTimeInterval = ARSTREAM2_STREAM_RECEIVER_LOSS_REPORT_RTCP_SEND_INTERVAL;
+        receiverConfig.djbReportSendTimeInterval = ARSTREAM2_STREAM_RECEIVER_DJB_REPORT_RTCP_SEND_INTERVAL;
 
         if (usemux) {
             receiver_mux_config.mux = mux_config->mux;
@@ -485,6 +505,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Init(ARSTREAM2_StreamReceiver_Handle *
             if (recorderThreadMutexInit) ARSAL_Mutex_Destroy(&(streamReceiver->recorder.threadMutex));
             if (recorderThreadCondInit) ARSAL_Cond_Destroy(&(streamReceiver->recorder.threadCond));
             ARSTREAM2_StreamStats_VideoStatsFileClose(&streamReceiver->videoStatsCtx);
+            ARSTREAM2_StreamStats_RtpStatsFileClose(&streamReceiver->rtpStatsCtx);
+            ARSTREAM2_StreamStats_RtpLossFileClose(&streamReceiver->rtpLossCtx);
             free(streamReceiver->debugPath);
             free(streamReceiver->friendlyName);
             free(streamReceiver->dateAndTime);
@@ -585,6 +607,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_Free(ARSTREAM2_StreamReceiver_Handle *
     free(streamReceiver->pSps);
     free(streamReceiver->pPps);
     ARSTREAM2_StreamStats_VideoStatsFileClose(&streamReceiver->videoStatsCtx);
+    ARSTREAM2_StreamStats_RtpStatsFileClose(&streamReceiver->rtpStatsCtx);
+    ARSTREAM2_StreamStats_RtpLossFileClose(&streamReceiver->rtpLossCtx);
     free(streamReceiver->debugPath);
     free(streamReceiver->friendlyName);
     free(streamReceiver->dateAndTime);
@@ -872,10 +896,18 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
         /* gray IDR frame generation */
         if ((streamReceiver->appOutput.grayIFramePending) || (streamReceiver->recorder.grayIFramePending))
         {
-            ret = ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame(streamReceiver, &auItem->au);
-            if (ret < 0)
+            if (auItem->au.syncType == ARSTREAM2_H264_AU_SYNC_TYPE_IDR)
             {
-                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame() failed (%d)", ret);
+                streamReceiver->appOutput.grayIFramePending = 0;
+                streamReceiver->recorder.grayIFramePending = 0;
+            }
+            else if (auItem->au.syncType != ARSTREAM2_H264_AU_SYNC_TYPE_NONE)
+            {
+                ret = ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame(streamReceiver, &auItem->au);
+                if (ret < 0)
+                {
+                    ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_TAG, "ARSTREAM2_StreamReceiver_GenerateGrayIdrFrame() failed (%d)", ret);
+                }
             }
         }
 
@@ -901,7 +933,7 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
         ARSAL_Mutex_Lock(&(streamReceiver->appOutput.threadMutex));
         int appOutputRunning = streamReceiver->appOutput.running;
         ARSAL_Mutex_Unlock(&(streamReceiver->appOutput.threadMutex));
-        if (appOutputRunning)
+        if ((appOutputRunning) && ((!streamReceiver->appOutput.grayIFramePending) || (auItem->au.syncType == ARSTREAM2_H264_AU_SYNC_TYPE_IDR)))
         {
             ret = ARSTREAM2_StreamReceiver_AppOutputAuEnqueue(streamReceiver, auItem);
             if (ret < 0)
@@ -944,6 +976,7 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
             {
                 vs->rssi = (int8_t)auItem->au.buffer->metadataBuffer[54];
             }
+            streamReceiver->lastKnownRssi = vs->rssi;
 
             eARSTREAM2_ERROR recvErr = ARSTREAM2_RtpReceiver_UpdateVideoStats(streamReceiver->receiver, vs);
             if (recvErr != ARSTREAM2_OK)
@@ -957,7 +990,7 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
         ARSAL_Mutex_Lock(&(streamReceiver->recorder.threadMutex));
         int recorderRunning = streamReceiver->recorder.running;
         ARSAL_Mutex_Unlock(&(streamReceiver->recorder.threadMutex));
-        if (recorderRunning)
+        if ((recorderRunning) && ((!streamReceiver->recorder.grayIFramePending) || (auItem->au.syncType == ARSTREAM2_H264_AU_SYNC_TYPE_IDR)))
         {
             ret = ARSTREAM2_StreamReceiver_RecorderAuEnqueue(streamReceiver, auItem);
             if (ret < 0)
@@ -987,6 +1020,32 @@ static int ARSTREAM2_StreamReceiver_RtpReceiverAuCallback(ARSTREAM2_H264_AuFifoI
     }
 
     return err;
+}
+
+
+static void ARSTREAM2_StreamReceiver_RtpReceiverStatsCallback(const ARSTREAM2_RTP_RtpStats_t *rtpStats, void *userPtr)
+{
+    ARSTREAM2_StreamReceiver_t* streamReceiver = (ARSTREAM2_StreamReceiver_t*)userPtr;
+
+    if (!userPtr)
+    {
+        return;
+    }
+
+    if (rtpStats)
+    {
+        ARSTREAM2_RTP_RtpStats_t s;
+        struct timespec t1;
+        uint64_t curTime;
+
+        ARSAL_Time_GetTime(&t1);
+        curTime = (uint64_t)t1.tv_sec * 1000000 + (uint64_t)t1.tv_nsec / 1000;
+
+        memcpy(&s, rtpStats, sizeof(ARSTREAM2_RTP_RtpStats_t));
+        s.rssi = streamReceiver->lastKnownRssi;
+        ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamReceiver->rtpStatsCtx, &s, curTime);
+        ARSTREAM2_StreamStats_RtpLossFileWrite(&streamReceiver->rtpLossCtx, &s);
+    }
 }
 
 
@@ -1091,7 +1150,7 @@ static int ARSTREAM2_StreamReceiver_StreamRecorderInit(ARSTREAM2_StreamReceiver_
         recConfig.spsSize = streamReceiver->spsSize;
         recConfig.pps = streamReceiver->pPps;
         recConfig.ppsSize = streamReceiver->ppsSize;
-        recConfig.serviceType = 0; //TODO
+        recConfig.ardiscoveryProductType = streamReceiver->recorder.ardiscoveryProductType;
         recConfig.auFifo = &streamReceiver->auFifo;
         recConfig.auFifoQueue = &streamReceiver->recorder.auFifoQueue;
         recConfig.mutex = &streamReceiver->recorder.threadMutex;
@@ -1121,7 +1180,7 @@ static int ARSTREAM2_StreamReceiver_StreamRecorderInit(ARSTREAM2_StreamReceiver_
                 else
                 {
                     ARSAL_Mutex_Lock(&(streamReceiver->recorder.threadMutex));
-                    streamReceiver->recorder.grayIFramePending = 1;
+                    streamReceiver->recorder.grayIFramePending = streamReceiver->recorder.generateGrayIFrame;
                     streamReceiver->recorder.running = 1;
                     ARSAL_Mutex_Unlock(&(streamReceiver->recorder.threadMutex));
                 }
@@ -1447,6 +1506,7 @@ void* ARSTREAM2_StreamReceiver_RunAppOutputThread(void *streamReceiverHandle)
                         {
                             vs->rssi = (int8_t)au->buffer->metadataBuffer[54];
                         }
+                        streamReceiver->lastKnownRssi = vs->rssi;
 
                         eARSTREAM2_ERROR recvErr = ARSTREAM2_RtpReceiver_UpdateVideoStats(streamReceiver->receiver, vs);
                         if (recvErr != ARSTREAM2_OK)
@@ -1545,7 +1605,7 @@ void* ARSTREAM2_StreamReceiver_RunAppOutputThread(void *streamReceiverHandle)
                         if (cbRet == ARSTREAM2_ERROR_RESYNC_REQUIRED)
                         {
                             /* schedule gray IDR frame */
-                            streamReceiver->appOutput.grayIFramePending = 1;
+                            streamReceiver->appOutput.grayIFramePending = streamReceiver->appOutput.generateGrayIFrame;
                         }
                     }
                     streamReceiver->lastAuOutputTimestamp = curTime;
@@ -1844,7 +1904,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_StartAppOutput(ARSTREAM2_StreamReceive
     }
 
     ARSAL_Mutex_Lock(&(streamReceiver->appOutput.threadMutex));
-    streamReceiver->appOutput.grayIFramePending = 1;
+    streamReceiver->appOutput.grayIFramePending = streamReceiver->appOutput.generateGrayIFrame;
     streamReceiver->appOutput.running = 1;
     ARSAL_Mutex_Unlock(&(streamReceiver->appOutput.threadMutex));
 
@@ -1993,6 +2053,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_GetUntimedMetadata(ARSTREAM2_StreamRec
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     uint32_t _sendInterval = 0, minSendInterval = (uint32_t)(-1);
     char *ptr;
+    int i;
 
     if (!streamReceiverHandle)
     {
@@ -2228,6 +2289,25 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_GetUntimedMetadata(ARSTREAM2_StreamRec
         metadata->copyright = NULL;
     }
 
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)))
+        {
+            _ret = ARSTREAM2_RtpReceiver_GetSdesItem(streamReceiver->receiver, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &metadata->custom[i].value, &_sendInterval);
+            if (_ret == ARSTREAM2_OK)
+            {
+                if (_sendInterval < minSendInterval)
+                {
+                    minSendInterval = _sendInterval;
+                }
+            }
+            else
+            {
+                metadata->custom[i].value = NULL;
+            }
+        }
+    }
+
     if (sendInterval)
     {
         *sendInterval = minSendInterval;
@@ -2243,6 +2323,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_SetUntimedMetadata(ARSTREAM2_StreamRec
     ARSTREAM2_StreamReceiver_t* streamReceiver = (ARSTREAM2_StreamReceiver_t*)streamReceiverHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     char *ptr;
+    int i;
 
     if (!streamReceiverHandle)
     {
@@ -2453,6 +2534,19 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_SetUntimedMetadata(ARSTREAM2_StreamRec
         }
     }
 
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)) && (metadata->custom[i].value) && (strlen(metadata->custom[i].value)))
+        {
+            ptr = NULL;
+            _ret = ARSTREAM2_RtpReceiver_GetSdesItem(streamReceiver->receiver, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &ptr, NULL);
+            if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->custom[i].value, 256)))
+            {
+                ARSTREAM2_RtpReceiver_SetSdesItem(streamReceiver->receiver, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, metadata->custom[i].value, sendInterval);
+            }
+        }
+    }
+
     return ret;
 }
 
@@ -2463,6 +2557,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_GetPeerUntimedMetadata(ARSTREAM2_Strea
     ARSTREAM2_StreamReceiver_t* streamReceiver = (ARSTREAM2_StreamReceiver_t*)streamReceiverHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     char *ptr;
+    int i;
 
     if (!streamReceiverHandle)
     {
@@ -2600,6 +2695,18 @@ eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_GetPeerUntimedMetadata(ARSTREAM2_Strea
     if (_ret != ARSTREAM2_OK)
     {
         metadata->copyright = NULL;
+    }
+
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)))
+        {
+            _ret = ARSTREAM2_RtpReceiver_GetPeerSdesItem(streamReceiver->receiver, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &metadata->custom[i].value);
+            if (_ret != ARSTREAM2_OK)
+            {
+                metadata->custom[i].value = NULL;
+            }
+        }
     }
 
     return ret;

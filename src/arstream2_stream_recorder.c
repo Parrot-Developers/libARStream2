@@ -543,7 +543,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamRecorder_Init(ARSTREAM2_StreamRecorder_Handle *
         eARMEDIA_ERROR err = ARMEDIA_OK;
         streamRecorder->videoEncap = ARMEDIA_VideoEncapsuler_New(config->mediaFileName,
                                                                  round(config->videoFramerate),
-                                                                 "", "", config->serviceType, &err);
+                                                                 "", "", config->ardiscoveryProductType, &err);
         if (streamRecorder->videoEncap == NULL)
         {
             ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECORDER_TAG, "ARMEDIA_VideoEncapsuler_New() failed: %d (%s)", err, ARMEDIA_Error_ToString(err));
@@ -842,7 +842,7 @@ void* ARSTREAM2_StreamRecorder_RunThread(void *param)
                 streamRecorder->videoEncapFrameHeader.frame_number = streamRecorder->auCount;
                 streamRecorder->videoEncapFrameHeader.width = streamRecorder->videoWidth;
                 streamRecorder->videoEncapFrameHeader.height = streamRecorder->videoHeight;
-                streamRecorder->videoEncapFrameHeader.timestamp = au->ntpTimestamp;
+                streamRecorder->videoEncapFrameHeader.timestamp = au->ntpTimestampRaw;
                 streamRecorder->videoEncapFrameHeader.frame_type = (au->syncType == ARSTREAM2_H264_AU_SYNC_TYPE_NONE) ? ARMEDIA_ENCAPSULER_FRAME_TYPE_P_FRAME : ARMEDIA_ENCAPSULER_FRAME_TYPE_I_FRAME;
                 streamRecorder->videoEncapFrameHeader.frame = NULL;
                 streamRecorder->videoEncapFrameHeader.avc_insert_ps = 0;
@@ -917,7 +917,7 @@ void* ARSTREAM2_StreamRecorder_RunThread(void *param)
                 if ((au->buffer->metadataBuffer) && (au->metadataSize) && (streamRecorder->recordingMetadataSize > 0))
                 {
                     /* Convert the metadata */
-                    int ret = ARSTREAM2_StreamRecorder_StreamingToRecordingMetadata(au->ntpTimestamp,
+                    int ret = ARSTREAM2_StreamRecorder_StreamingToRecordingMetadata(au->ntpTimestampRaw,
                                                                                     au->buffer->metadataBuffer, au->metadataSize,
                                                                                     streamRecorder->savedMetadata, streamRecorder->savedMetadataSize,
                                                                                     streamRecorder->recordingMetadata, streamRecorder->recordingMetadataSize,

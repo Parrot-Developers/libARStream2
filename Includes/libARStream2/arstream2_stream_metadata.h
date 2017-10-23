@@ -15,6 +15,9 @@ extern "C" {
 #include <inttypes.h>
 
 
+#define ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT (10)
+
+
 /**
  * @brief ARSTREAM2 stream untimed metadata.
  */
@@ -37,6 +40,10 @@ typedef struct ARSTREAM2_Stream_UntimedMetadata_t
     float takeoffAltitude;                          /**< Takeoff altitude */
     float pictureHFov;                              /**< Camera horizontal field of view (0 means unknown) */
     float pictureVFov;                              /**< Camera vertical field of view (0 means unknown) */
+    struct {
+        char *key;                                  /**< User-provided custom metadata key (must be set to NULL to disable) */
+        char *value;                                /**< User-provided custom metadata value (must be set to NULL to disable) */
+    } custom[ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT];
 
 } ARSTREAM2_Stream_UntimedMetadata_t;
 

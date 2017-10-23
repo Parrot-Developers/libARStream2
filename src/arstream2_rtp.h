@@ -64,20 +64,53 @@ typedef struct {
  */
 typedef struct ARSTREAM2_RTP_RtpStats_s
 {
-    uint64_t timestamp;
     int8_t rssi;
-    uint32_t roundTripDelay;
-    uint32_t interarrivalJitter;
-    uint32_t receiverLostCount;
-    uint32_t receiverFractionLost;
-    uint32_t receiverExtHighestSeqNum;
-    uint32_t lastSenderReportInterval;
-    uint32_t senderReportIntervalPacketCount;
-    uint32_t senderReportIntervalByteCount;
-    uint32_t senderPacketCount;
-    uint64_t senderByteCount;
-    int64_t peerClockDelta;
-    uint32_t roundTripDelayFromClockDelta;
+    struct {
+        uint64_t timestamp;
+        uint32_t sentPacketCount;
+        uint32_t droppedPacketCount;
+        uint64_t sentByteIntegral;
+        uint64_t sentByteIntegralSq;
+        uint64_t droppedByteIntegral;
+        uint64_t droppedByteIntegralSq;
+        uint64_t inputToSentTimeIntegral;
+        uint64_t inputToSentTimeIntegralSq;
+        uint64_t inputToDroppedTimeIntegral;
+        uint64_t inputToDroppedTimeIntegralSq;
+    } senderStats;
+    struct {
+        uint64_t timestamp;
+        uint32_t lastInterval;
+        uint32_t intervalPacketCount;
+        uint32_t intervalByteCount;
+    } senderReport;
+    struct {
+        uint64_t timestamp;
+        uint32_t roundTripDelay;
+        uint32_t interarrivalJitter;
+        uint32_t receiverLostCount;
+        uint32_t receiverFractionLost;
+        uint32_t receiverExtHighestSeqNum;
+    } receiverReport;
+    struct {
+        uint64_t timestamp;
+        uint16_t startSeqNum;
+        uint16_t endSeqNum;
+        uint32_t *receivedFlag;
+    } lossReport;
+    struct {
+        uint64_t timestamp;
+        uint32_t djbNominal;
+        uint32_t djbMax;
+        uint32_t djbHighWatermark;
+        uint32_t djbLowWatermark;
+    } djbMetricsReport;
+    struct {
+        int64_t peerClockDelta;
+        uint32_t roundTripDelay;
+        uint32_t peer2meDelay;
+        uint32_t me2peerDelay;
+    } clockDelta;
 
 } ARSTREAM2_RTP_RtpStats_t;
 
@@ -215,6 +248,17 @@ typedef struct ARSTREAM2_RTP_SenderContext_s
     unsigned int stapPayloadSize;
     unsigned int stapHeaderExtensionSize;
 
+    uint32_t sentPacketCount;
+    uint32_t droppedPacketCount;
+    uint64_t sentByteIntegral;
+    uint64_t sentByteIntegralSq;
+    uint64_t droppedByteIntegral;
+    uint64_t droppedByteIntegralSq;
+    uint64_t inputToSentTimeIntegral;
+    uint64_t inputToSentTimeIntegralSq;
+    uint64_t inputToDroppedTimeIntegral;
+    uint64_t inputToDroppedTimeIntegralSq;
+
     void *auCallback;
     void *auCallbackUserPtr;
     uint64_t lastAuCallbackTimestamp;
@@ -321,6 +365,8 @@ int ARSTREAM2_RTP_Sender_GeneratePacket(ARSTREAM2_RTP_SenderContext_t *context, 
                                         uint64_t ntpTimestamp, uint64_t inputTimestamp,
                                         uint64_t timeoutTimestamp, uint16_t seqNum, uint32_t markerBit,
                                         uint32_t importance, uint32_t priority);
+
+int ARSTREAM2_RTP_Sender_FinishPacket(ARSTREAM2_RTP_SenderContext_t *context, ARSTREAM2_RTP_Packet_t *packet, uint64_t curTime, int dropped);
 
 /* WARNING: the call sequence ARSTREAM2_RTP_Receiver_PacketFifoFillMsgVec -> recvmmsg -> ARSTREAM2_RTP_Receiver_PacketFifoAddFromMsgVec
    must not be broken (no change made to the free items list) */

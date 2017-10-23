@@ -49,20 +49,77 @@ typedef enum
  */
 typedef struct
 {
-    uint64_t timestamp;                             /**< Timestamp associated with the stats (reception report reception timestamp) */
     int8_t rssi;                                    /**< RSSI (0 if unknown) */
-    uint32_t roundTripDelay;                        /**< Round-trip delay in microseconds */
-    uint32_t interarrivalJitter;                    /**< Interarrival jitter in microseconds */
-    uint32_t receiverLostCount;                     /**< Cumulated lost packets count on the receiver side */
-    uint32_t receiverFractionLost;                  /**< Fraction of packets lost on the receiver side since the last report */
-    uint32_t receiverExtHighestSeqNum;              /**< Extended highest sequence number received on the receiver side */
-    uint32_t lastSenderReportInterval;              /**< Time interval between the last two sender reports in microseconds */
-    uint32_t senderReportIntervalPacketCount;       /**< Sent packets count over the last sender report interval */
-    uint32_t senderReportIntervalByteCount;         /**< Sent bytes count over the last sender report interval */
-    uint32_t senderPacketCount;                     /**< Sent packets count since the start of the session */
-    uint64_t senderByteCount;                       /**< Sent bytes count since the start of the session */
-    int64_t peerClockDelta;                         /**< Peer clock delta in microseconds */
-    uint32_t roundTripDelayFromClockDelta;          /**< Round-trip delay in microseconds (from the clock delta computation) */
+
+    /* Sender stats */
+    struct
+    {
+        uint64_t timestamp;                         /**< Sender stats timestamp (0 if unavailable) */
+        uint32_t sentPacketCount;                   /**< Total sent packet counter */
+        uint32_t droppedPacketCount;                /**< Total dropped packet counter (dropped on the sender side) */
+        uint64_t sentByteIntegral;                  /**< Total sent bytes integral value */
+        uint64_t sentByteIntegralSq;                /**< Total sent bytes squared integral value */
+        uint64_t droppedByteIntegral;               /**< Total dropped bytes integral value (dropped on the sender side) */
+        uint64_t droppedByteIntegralSq;             /**< Total dropped bytes squared integral value (dropped on the sender side) */
+        uint64_t inputToSentTimeIntegral;           /**< Input to sent time integral value (microseconds) */
+        uint64_t inputToSentTimeIntegralSq;         /**< Input to sent time squared integral value (microseconds^2) */
+        uint64_t inputToDroppedTimeIntegral;        /**< Input to dropped time integral value (microseconds) */
+        uint64_t inputToDroppedTimeIntegralSq;      /**< Input to dropped time squared integral value (microseconds^2) */
+
+    } senderStats;
+
+    /* Sender report (see RFC3550) */
+    struct
+    {
+        uint64_t timestamp;                         /**< Sender report timestamp (0 if unavailable) */
+        uint32_t lastInterval;                      /**< Time interval between the last two sender reports in microseconds */
+        uint32_t intervalPacketCount;               /**< Sent packets count over the last sender report interval */
+        uint32_t intervalByteCount;                 /**< Sent bytes count over the last sender report interval */
+
+    } senderReport;
+
+    /* Receiver report (see RFC3550) */
+    struct
+    {
+        uint64_t timestamp;                         /**< Receiver report timestamp (0 if unavailable) */
+        uint32_t roundTripDelay;                    /**< Round-trip delay in microseconds */
+        uint32_t interarrivalJitter;                /**< Interarrival jitter in microseconds */
+        uint32_t receiverLostCount;                 /**< Cumulated lost packets count on the receiver side */
+        uint32_t receiverFractionLost;              /**< Fraction of packets lost on the receiver side since the last report */
+        uint32_t receiverExtHighestSeqNum;          /**< Extended highest sequence number received */
+
+    } receiverReport;
+
+    /* Loss report (see RFC3611) */
+    struct
+    {
+        uint64_t timestamp;                         /**< Loss report timestamp (0 if unavailable) */
+        uint16_t startSeqNum;                       /**< Current report start RTP sequence number */
+        uint16_t endSeqNum;                         /**< Current report last RTP sequence number */
+        uint32_t *receivedFlag;                     /**< Loss report bit-field (big-endian, 1 bit per packet, total bit count is endSeqNum-startSeqNum+1) */
+
+    } lossReport;
+
+    /* De-jitter buffer metrics (see RFC7005) */
+    struct
+    {
+        uint64_t timestamp;                         /**< De-jitter buffer metrics report timestamp (0 if unavailable) */
+        uint32_t djbNominal;                        /**< De-jitter buffer nominal delay (microseconds) */
+        uint32_t djbMax;                            /**< De-jitter buffer maximum delay (microseconds) */
+        uint32_t djbHighWatermark;                  /**< Highest value of the de-jitter buffer nominal delay (microseconds) */
+        uint32_t djbLowWatermark;                   /**< Lowest value of the de-jitter buffer nominal delay (microseconds) */
+
+    } djbMetricsReport;
+
+    /* Clock delta */
+    struct
+    {
+        int64_t peerClockDelta;                     /**< Peer clock delta in microseconds */
+        uint32_t roundTripDelay;                    /**< Round-trip delay in microseconds (from the clock delta computation) */
+        uint32_t peer2meDelay;                      /**< Peer-to-me delay in microseconds (from the clock delta computation) */
+        uint32_t me2peerDelay;                      /**< Me-to-peer delay in microseconds (from the clock delta computation) */
+
+    } clockDelta;
 
 } ARSTREAM2_StreamStats_RtpStats_t;
 

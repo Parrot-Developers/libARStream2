@@ -26,8 +26,9 @@ static JavaVM *g_vm = NULL;
 // ---------------------------------------
 
 JNIEXPORT jlong JNICALL
-Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobject thizz, jstring serverAddress, jint serverStreamPort, jint serverControlPort,
-    jint clientStreamPort, jint clientControlPort, jstring canonicalName, jstring friendlyName, jint maxPacketSize, jint classSelector)
+Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobject thizz,
+    jstring serverAddress, jint serverStreamPort, jint serverControlPort, jint clientStreamPort, jint clientControlPort,
+    jstring canonicalName, jstring friendlyName, jint maxPacketSize, jint classSelector, jint ardiscoveryProductType)
 {
     ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "ARStream2Manager_nativeInit");
     ARSTREAM2_StreamReceiver_Config_t config;
@@ -58,6 +59,7 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobj
     config.replaceStartCodesWithNaluSize = 0;
     config.generateSkippedPSlices = 1;
     config.generateFirstGrayIFrame = 1;
+    config.ardiscoveryProductType = ardiscoveryProductType;
     config.debugPath = ARSTREAM2_STREAM_RECEIVER_JNI_DEBUG_PATH;
 
     ARSTREAM2_StreamReceiver_Handle streamReceiverHandle = 0;
@@ -77,7 +79,8 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeNetInit(JNIEnv *env, jobj
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobject thizz, jlong mux, jstring canonicalName, jstring friendlyName, jint maxPacketSize)
+Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobject thizz,
+    jlong mux, jstring canonicalName, jstring friendlyName, jint maxPacketSize, jint ardiscoveryProductType)
 {
     ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "ARStream2Manager_nativeInit");
     ARSTREAM2_StreamReceiver_Config_t config;
@@ -100,6 +103,7 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobj
     config.replaceStartCodesWithNaluSize = 0;
     config.generateSkippedPSlices = 1;
     config.generateFirstGrayIFrame = 1;
+    config.ardiscoveryProductType = ardiscoveryProductType;
     config.debugPath = ARSTREAM2_STREAM_RECEIVER_JNI_DEBUG_PATH;
 
     ARSTREAM2_StreamReceiver_Handle streamReceiverHandle = 0;
@@ -117,12 +121,21 @@ Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeMuxInit(JNIEnv *env, jobj
     return (jlong)(intptr_t)streamReceiverHandle;
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_parrot_arsdk_arstream2_ARStream2Manager_nativeStop(JNIEnv *env, jobject thizz, jlong cStreamReceiver)
 {
     ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "ARStream2Manager_nativeStop");
+    jboolean retVal = JNI_TRUE;
     ARSTREAM2_StreamReceiver_Handle streamReceiverHandle = (ARSTREAM2_StreamReceiver_Handle)(intptr_t)cStreamReceiver;
-    ARSTREAM2_StreamReceiver_Stop(streamReceiverHandle);
+
+    eARSTREAM2_ERROR err = ARSTREAM2_StreamReceiver_Stop(streamReceiverHandle);
+    if (err != ARSTREAM2_OK)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "Unable to stop StreamReceiver: %s", ARSTREAM2_Error_ToString(err));
+        retVal = JNI_FALSE;
+    }
+
+    return retVal;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -191,7 +204,7 @@ Java_com_parrot_arsdk_arstream2_ARStream2Receiver_nativeInitClass(JNIEnv *env, j
     {
         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "Unable to find method getBuffer");
     }
-    g_onBufferReady = (*env)->GetMethodID(env, clazz, "onBufferReady", "(IIJIJJJI)I");
+    g_onBufferReady = (*env)->GetMethodID(env, clazz, "onBufferReady", "(IIJIJIJJJIIII)I");
     if (!g_onBufferReady)
     {
         ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_STREAM_RECEIVER_JNI_TAG, "Unable to find method onBufferReady");
@@ -370,7 +383,11 @@ static eARSTREAM2_ERROR ARSTREAM2_StreamReceiver_JNI_AuReadyCallback(uint8_t *au
     }
 
     ret = (*env)->CallIntMethod(env, (jobject)userPtr, g_onBufferReady, (jint)(intptr_t)auBufferUserPtr, (jint)auSize,
-                                (jlong)auMetadata->auMetadata, (jint)auMetadata->auMetadataSize, (jlong)auTimestamps->auNtpTimestamp, (jlong)auTimestamps->auNtpTimestampRaw, (jlong)auTimestamps->auNtpTimestampLocal, (jint)auSyncType);
+                                (jlong)auMetadata->auMetadata, (jint)auMetadata->auMetadataSize,
+                                (jlong)auMetadata->auUserData, (jint)auMetadata->auUserDataSize,
+                                (jlong)auTimestamps->auNtpTimestamp, (jlong)auTimestamps->auNtpTimestampRaw,
+                                (jlong)auTimestamps->auNtpTimestampLocal, (jint)auSyncType,
+                                (jint)auMetadata->isComplete, (jint)auMetadata->hasErrors, (jint)auMetadata->isRef);
     if (wasAlreadyAttached == 0)
     {
         (*g_vm)->DetachCurrentThread(g_vm);

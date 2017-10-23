@@ -566,25 +566,10 @@ int ARSTREAM2_RTPH264_Sender_NaluFifoToPacketFifo(ARSTREAM2_RTP_SenderContext_t 
             ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTPH264_TAG, "Time %"PRIu64": dropped NALU (%.1fms late) (seqNum = %d)",
                         nalu.ntpTimestamp, (float)(curTime - nalu.timeoutTimestamp) / 1000., context->seqNum - 1);
 
-            /* call the monitoringCallback */
-            if (context->monitoringCallback != NULL)
+            ret = ARSTREAM2_RTPH264_Sender_NaluDrop(context, &nalu, curTime);
+            if (ret < 0)
             {
-                uint32_t rtpTimestamp = (nalu.ntpTimestamp * context->rtpClockRate + (uint64_t)context->rtpTimestampOffset + 500000) / 1000000;
-
-                /* increment the sequence number to let the receiver know that we dropped something */
-                context->seqNum += nalu.seqNumForcedDiscontinuity + 1;
-                context->packetCount += nalu.seqNumForcedDiscontinuity + 1;
-                context->byteCount += nalu.naluSize;
-
-                context->monitoringCallback(nalu.inputTimestamp, curTime, nalu.ntpTimestamp, rtpTimestamp, context->seqNum - 1,
-                                            nalu.isLastInAu, nalu.importance, nalu.priority,
-                                            0, nalu.naluSize, context->monitoringCallbackUserPtr);
-            }
-
-            /* call the naluCallback */
-            if (context->naluCallback != NULL)
-            {
-                ((ARSTREAM2_StreamSender_NaluCallback_t)context->naluCallback)(ARSTREAM2_STREAM_SENDER_STATUS_CANCELLED, nalu.naluUserPtr, context->naluCallbackUserPtr);
+                ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "ARSTREAM2_RTPH264_Sender_NaluDrop() failed (%d)", ret);
             }
         }
 
@@ -624,25 +609,10 @@ int ARSTREAM2_RTPH264_Sender_FifoFlush(ARSTREAM2_RTP_SenderContext_t *context,
     {
         naluCount++;
 
-        /* call the monitoringCallback */
-        if (context->monitoringCallback != NULL)
+        ret = ARSTREAM2_RTPH264_Sender_NaluDrop(context, &nalu, curTime);
+        if (ret < 0)
         {
-            uint32_t rtpTimestamp = (nalu.ntpTimestamp * context->rtpClockRate + (uint64_t)context->rtpTimestampOffset + 500000) / 1000000;
-
-            /* increment the sequence number to let the receiver know that we dropped something */
-            context->seqNum += nalu.seqNumForcedDiscontinuity + 1;
-            context->packetCount += nalu.seqNumForcedDiscontinuity + 1;
-            context->byteCount += nalu.naluSize;
-
-            context->monitoringCallback(nalu.inputTimestamp, curTime, nalu.ntpTimestamp, rtpTimestamp, context->seqNum - 1,
-                                        nalu.isLastInAu, nalu.importance, nalu.priority,
-                                        0, nalu.naluSize, context->monitoringCallbackUserPtr);
-        }
-
-        /* call the naluCallback */
-        if (context->naluCallback != NULL)
-        {
-            ((ARSTREAM2_StreamSender_NaluCallback_t)context->naluCallback)(ARSTREAM2_STREAM_SENDER_STATUS_CANCELLED, nalu.naluUserPtr, context->naluCallbackUserPtr);
+            ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "ARSTREAM2_RTPH264_Sender_NaluDrop() failed (%d)", ret);
         }
 
         /* last NALU in the Access Unit: call the auCallback */
@@ -661,6 +631,52 @@ int ARSTREAM2_RTPH264_Sender_FifoFlush(ARSTREAM2_RTP_SenderContext_t *context,
     ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTPH264_TAG, "Flushed %d NALUs from FIFO", naluCount); //TODO: debug
 
     return ret;
+}
+
+
+int ARSTREAM2_RTPH264_Sender_NaluDrop(ARSTREAM2_RTP_SenderContext_t *context,
+                                      ARSTREAM2_H264_NalUnit_t *nalu,
+                                      uint64_t curTime)
+{
+    if ((!context) || (!nalu))
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "Invalid pointer");
+        return -1;
+    }
+    if (!curTime)
+    {
+        ARSAL_PRINT(ARSAL_PRINT_ERROR, ARSTREAM2_RTPH264_TAG, "Invalid current time");
+        return -1;
+    }
+
+    /* increment the sequence number to let the receiver know that we dropped something */
+    context->seqNum += nalu->seqNumForcedDiscontinuity + 1;
+    context->packetCount += nalu->seqNumForcedDiscontinuity + 1;
+    context->byteCount += nalu->naluSize;
+
+    context->droppedPacketCount++;
+    context->droppedByteIntegral += nalu->naluSize;
+    context->droppedByteIntegralSq += (nalu->naluSize * nalu->naluSize);
+    context->inputToDroppedTimeIntegral += (curTime - nalu->inputTimestamp);
+    context->inputToDroppedTimeIntegralSq += ((curTime - nalu->inputTimestamp) * (curTime - nalu->inputTimestamp));
+
+    /* call the monitoringCallback */
+    if (context->monitoringCallback != NULL)
+    {
+        uint32_t rtpTimestamp = (nalu->ntpTimestamp * context->rtpClockRate + (uint64_t)context->rtpTimestampOffset + 500000) / 1000000;
+
+        context->monitoringCallback(nalu->inputTimestamp, curTime, nalu->ntpTimestamp, rtpTimestamp, context->seqNum - 1,
+                                    nalu->isLastInAu, nalu->importance, nalu->priority,
+                                    0, nalu->naluSize, context->monitoringCallbackUserPtr);
+    }
+
+    /* call the naluCallback */
+    if (context->naluCallback != NULL)
+    {
+        ((ARSTREAM2_StreamSender_NaluCallback_t)context->naluCallback)(ARSTREAM2_STREAM_SENDER_STATUS_CANCELLED, nalu->naluUserPtr, context->naluCallbackUserPtr);
+    }
+
+    return 0;
 }
 
 
@@ -1071,6 +1087,11 @@ int ARSTREAM2_RTPH264_Receiver_PacketFifoToAuFifo(ARSTREAM2_RTPH264_ReceiverCont
                         rtcpContext->packetsLost += missingPacketsBefore;
                         rtcpContext->packetsReceived -= missingPacketsBefore;
                     }
+                    err = ARSTREAM2_RTCP_LossReportSet(&rtcpContext->lossReportCtx, packet->extSeqNum);
+                    if (err != 0)
+                    {
+                        ARSAL_PRINT(ARSAL_PRINT_WARNING, ARSTREAM2_RTPH264_TAG, "ARSTREAM2_RTCP_LossReportSet() failed (%d)", err);
+                    }
 
                     /* AU change detection */
                     if ((ret == 0) && (context->auItem != NULL) && (context->previousDepayloadExtRtpTimestamp != 0)
@@ -1329,12 +1350,6 @@ int ARSTREAM2_RTPH264_Receiver_PacketFifoToAuFifo(ARSTREAM2_RTPH264_ReceiverCont
                     context->previousDepayloadExtSeqNum = packet->extSeqNum;
                     context->previousDepayloadExtRtpTimestamp = packet->extRtpTimestamp;
                     packetCount++;
-                }
-                else
-                {
-                    rtcpContext->packetsLost++;
-                    ARSAL_PRINT(ARSAL_PRINT_VERBOSE, ARSTREAM2_RTPH264_TAG, "Late out of order RTP packet dropped (seqNum %d, extSeqNum %d)",
-                                packetItem->packet.seqNum, packetItem->packet.extSeqNum);
                 }
 
                 err = ARSTREAM2_RTP_PacketFifoUnrefBuffer(packetFifo, packetItem->packet.buffer);

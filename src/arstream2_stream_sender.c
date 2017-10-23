@@ -73,6 +73,7 @@ typedef struct ARSTREAM2_StreamSender_s
     char *dateAndTime;
     char *debugPath;
     ARSTREAM2_StreamStats_RtpStatsContext_t rtpStatsCtx;
+    ARSTREAM2_StreamStats_RtpLossContext_t rtpLossCtx;
     int8_t lastKnownRssi;
     ARSTREAM2_StreamStats_VideoStatsContext_t videoStatsCtx;
     int videoStatsInitPending;
@@ -174,6 +175,8 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_Init(ARSTREAM2_StreamSender_Handle *stre
         streamSender->videoStatsInitPending = 1;
         ARSTREAM2_StreamStats_RtpStatsFileOpen(&streamSender->rtpStatsCtx, streamSender->debugPath,
                                                streamSender->friendlyName, streamSender->dateAndTime);
+        ARSTREAM2_StreamStats_RtpLossFileOpen(&streamSender->rtpLossCtx, streamSender->debugPath,
+                                              streamSender->friendlyName, streamSender->dateAndTime);
     }
 
     /* Setup the NAL unit FIFO */
@@ -311,6 +314,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_Init(ARSTREAM2_StreamSender_Handle *stre
             if (naluFifoWasCreated == 1) ARSTREAM2_H264_NaluFifoFree(&(streamSender->naluFifo));
             if (packetFifoWasCreated == 1) ARSTREAM2_RTP_PacketFifoFree(&(streamSender->packetFifo));
             ARSTREAM2_StreamStats_RtpStatsFileClose(&streamSender->rtpStatsCtx);
+            ARSTREAM2_StreamStats_RtpLossFileClose(&streamSender->rtpLossCtx);
             free(streamSender->debugPath);
             free(streamSender->friendlyName);
             free(streamSender->dateAndTime);
@@ -394,6 +398,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_Free(ARSTREAM2_StreamSender_Handle *stre
         ARSTREAM2_RTP_PacketFifoFree(&(streamSender->packetFifo));
         ARSTREAM2_StreamStats_VideoStatsFileClose(&streamSender->videoStatsCtx);
         ARSTREAM2_StreamStats_RtpStatsFileClose(&streamSender->rtpStatsCtx);
+        ARSTREAM2_StreamStats_RtpLossFileClose(&streamSender->rtpLossCtx);
         free(streamSender->debugPath);
         free(streamSender->friendlyName);
         free(streamSender->dateAndTime);
@@ -772,6 +777,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     uint32_t _sendInterval = 0, minSendInterval = (uint32_t)(-1);
     char *ptr;
+    int i;
 
     if (!streamSenderHandle)
     {
@@ -1007,6 +1013,25 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetUntimedMetadata(ARSTREAM2_StreamSende
         metadata->copyright = NULL;
     }
 
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)))
+        {
+            _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &metadata->custom[i].value, &_sendInterval);
+            if (_ret == ARSTREAM2_OK)
+            {
+                if (_sendInterval < minSendInterval)
+                {
+                    minSendInterval = _sendInterval;
+                }
+            }
+            else
+            {
+                metadata->custom[i].value = NULL;
+            }
+        }
+    }
+
     if (sendInterval)
     {
         *sendInterval = minSendInterval;
@@ -1022,6 +1047,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
     ARSTREAM2_StreamSender_t *streamSender = (ARSTREAM2_StreamSender_t*)streamSenderHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     char *ptr;
+    int i;
 
     if (!streamSenderHandle)
     {
@@ -1232,6 +1258,19 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_SetUntimedMetadata(ARSTREAM2_StreamSende
         }
     }
 
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)) && (metadata->custom[i].value) && (strlen(metadata->custom[i].value)))
+        {
+            ptr = NULL;
+            _ret = ARSTREAM2_RtpSender_GetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &ptr, NULL);
+            if ((_ret != ARSTREAM2_OK) || (strncmp(ptr, metadata->custom[i].value, 256)))
+            {
+                ARSTREAM2_RtpSender_SetSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, metadata->custom[i].value, sendInterval);
+            }
+        }
+    }
+
     return ret;
 }
 
@@ -1242,6 +1281,7 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamS
     ARSTREAM2_StreamSender_t *streamSender = (ARSTREAM2_StreamSender_t*)streamSenderHandle;
     eARSTREAM2_ERROR ret = ARSTREAM2_OK, _ret;
     char *ptr;
+    int i;
 
     if (!streamSenderHandle)
     {
@@ -1381,6 +1421,18 @@ eARSTREAM2_ERROR ARSTREAM2_StreamSender_GetPeerUntimedMetadata(ARSTREAM2_StreamS
         metadata->copyright = NULL;
     }
 
+    for (i = 0; i < ARSTREAM2_STREAM_UNTIMEDMETADATA_CUSTOM_MAX_COUNT; i++)
+    {
+        if ((metadata->custom[i].key) && (strlen(metadata->custom[i].key)))
+        {
+            _ret = ARSTREAM2_RtpSender_GetPeerSdesItem(streamSender->sender, ARSTREAM2_RTCP_SDES_PRIV_ITEM, metadata->custom[i].key, &metadata->custom[i].value);
+            if (_ret != ARSTREAM2_OK)
+            {
+                metadata->custom[i].value = NULL;
+            }
+        }
+    }
+
     return ret;
 }
 
@@ -1418,9 +1470,16 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
     if (rtpStats)
     {
         ARSTREAM2_RTP_RtpStats_t s;
+        struct timespec t1;
+        uint64_t curTime;
+
+        ARSAL_Time_GetTime(&t1);
+        curTime = (uint64_t)t1.tv_sec * 1000000 + (uint64_t)t1.tv_nsec / 1000;
+
         memcpy(&s, rtpStats, sizeof(ARSTREAM2_RTP_RtpStats_t));
         s.rssi = streamSender->lastKnownRssi;
-        ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamSender->rtpStatsCtx, &s);
+        ARSTREAM2_StreamStats_RtpStatsFileWrite(&streamSender->rtpStatsCtx, &s, curTime);
+        ARSTREAM2_StreamStats_RtpLossFileWrite(&streamSender->rtpLossCtx, &s);
 
         if (streamSender->rtpStatsCallback)
         {
@@ -1428,20 +1487,41 @@ static void ARSTREAM2_StreamSender_RtpStatsCallback(const ARSTREAM2_RTP_RtpStats
             memset(&rtpsOut, 0, sizeof(ARSTREAM2_StreamStats_RtpStats_t));
 
             /* Map the RTP stats */
-            rtpsOut.timestamp = rtpStats->timestamp;
             rtpsOut.rssi = streamSender->lastKnownRssi;
-            rtpsOut.roundTripDelay = rtpStats->roundTripDelay;
-            rtpsOut.interarrivalJitter = rtpStats->interarrivalJitter;
-            rtpsOut.receiverLostCount = rtpStats->receiverLostCount;
-            rtpsOut.receiverFractionLost = rtpStats->receiverFractionLost;
-            rtpsOut.receiverExtHighestSeqNum = rtpStats->receiverExtHighestSeqNum;
-            rtpsOut.lastSenderReportInterval = rtpStats->lastSenderReportInterval;
-            rtpsOut.senderReportIntervalPacketCount = rtpStats->senderReportIntervalPacketCount;
-            rtpsOut.senderReportIntervalByteCount = rtpStats->senderReportIntervalByteCount;
-            rtpsOut.senderPacketCount = rtpStats->senderPacketCount;
-            rtpsOut.senderByteCount = rtpStats->senderByteCount;
-            rtpsOut.peerClockDelta = rtpStats->peerClockDelta;
-            rtpsOut.roundTripDelayFromClockDelta = rtpStats->roundTripDelayFromClockDelta;
+            rtpsOut.senderStats.timestamp = rtpStats->senderStats.timestamp;
+            rtpsOut.senderStats.sentPacketCount = rtpStats->senderStats.sentPacketCount;
+            rtpsOut.senderStats.droppedPacketCount = rtpStats->senderStats.droppedPacketCount;
+            rtpsOut.senderStats.sentByteIntegral = rtpStats->senderStats.sentByteIntegral;
+            rtpsOut.senderStats.sentByteIntegralSq = rtpStats->senderStats.sentByteIntegralSq;
+            rtpsOut.senderStats.droppedByteIntegral = rtpStats->senderStats.droppedByteIntegral;
+            rtpsOut.senderStats.droppedByteIntegralSq = rtpStats->senderStats.droppedByteIntegralSq;
+            rtpsOut.senderStats.inputToSentTimeIntegral = rtpStats->senderStats.inputToSentTimeIntegral;
+            rtpsOut.senderStats.inputToSentTimeIntegralSq = rtpStats->senderStats.inputToSentTimeIntegralSq;
+            rtpsOut.senderStats.inputToDroppedTimeIntegral = rtpStats->senderStats.inputToDroppedTimeIntegral;
+            rtpsOut.senderStats.inputToDroppedTimeIntegralSq = rtpStats->senderStats.inputToDroppedTimeIntegralSq;
+            rtpsOut.senderReport.timestamp = rtpStats->senderReport.timestamp;
+            rtpsOut.senderReport.lastInterval = rtpStats->senderReport.lastInterval;
+            rtpsOut.senderReport.intervalPacketCount = rtpStats->senderReport.intervalPacketCount;
+            rtpsOut.senderReport.intervalByteCount = rtpStats->senderReport.intervalByteCount;
+            rtpsOut.receiverReport.timestamp = rtpStats->receiverReport.timestamp;
+            rtpsOut.receiverReport.roundTripDelay = rtpStats->receiverReport.roundTripDelay;
+            rtpsOut.receiverReport.interarrivalJitter = rtpStats->receiverReport.interarrivalJitter;
+            rtpsOut.receiverReport.receiverLostCount = rtpStats->receiverReport.receiverLostCount;
+            rtpsOut.receiverReport.receiverFractionLost = rtpStats->receiverReport.receiverFractionLost;
+            rtpsOut.receiverReport.receiverExtHighestSeqNum = rtpStats->receiverReport.receiverExtHighestSeqNum;
+            rtpsOut.lossReport.timestamp = rtpStats->lossReport.timestamp;
+            rtpsOut.lossReport.startSeqNum = rtpStats->lossReport.startSeqNum;
+            rtpsOut.lossReport.endSeqNum = rtpStats->lossReport.endSeqNum;
+            rtpsOut.lossReport.receivedFlag = rtpStats->lossReport.receivedFlag;
+            rtpsOut.djbMetricsReport.timestamp = rtpStats->djbMetricsReport.timestamp;
+            rtpsOut.djbMetricsReport.djbNominal = rtpStats->djbMetricsReport.djbNominal;
+            rtpsOut.djbMetricsReport.djbMax = rtpStats->djbMetricsReport.djbMax;
+            rtpsOut.djbMetricsReport.djbHighWatermark = rtpStats->djbMetricsReport.djbHighWatermark;
+            rtpsOut.djbMetricsReport.djbLowWatermark = rtpStats->djbMetricsReport.djbLowWatermark;
+            rtpsOut.clockDelta.peerClockDelta = rtpStats->clockDelta.peerClockDelta;
+            rtpsOut.clockDelta.roundTripDelay = rtpStats->clockDelta.roundTripDelay;
+            rtpsOut.clockDelta.peer2meDelay = rtpStats->clockDelta.peer2meDelay;
+            rtpsOut.clockDelta.me2peerDelay = rtpStats->clockDelta.me2peerDelay;
 
             /* Call the receiver report callback function */
             streamSender->rtpStatsCallback(&rtpsOut, streamSender->rtpStatsCallbackUserPtr);
